@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Dashboard</title>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet"/>
+    <style>
+        /* Custom style for the Delete button only */
+        .delete-btn {
+            color: red;  /* Set the text color to red */
+            border: 1px solid red; /* Set the border color to red */
+        }
+
+        .delete-btn:hover {
+            background-color: red;  /* Optional: background color on hover */
+            color: white;  /* Optional: text color on hover */
+            border-color: red;  /* Optional: border color on hover */
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation bar with logout option -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <a class="navbar-brand" href="#">Marking Tool</a>
+        <div class="ml-auto">
+            <a href="{% url 'logout' %}" class="btn btn-outline-light">Logout</a>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <h2 class="text-center mb-4">Your Dashboard</h2>
+        <div class="text-center mb-3">
+            <a href="{% url 'create_assignment' %}" class="btn btn-primary">Start a New Assignment</a>
+        </div>
+
+        <div class="row">
+            {% for assignment in assignments %}
+            <div class="col-md-4 mb-4">
+                <div class="card">
+                    <div class="card-body">
+                        <!-- Display the project name for each assignment -->
+                        <h5 class="card-title">{{ assignment.project_name }}</h5>
+                        <!-- Add description if it exists -->
+                        {% if assignment.description %}
+                        <p class="card-text">{{ assignment.description }}</p>
+                        {% endif %}
+                        <!-- Show assignment status -->
+                        <p><strong>Status:</strong> {{ assignment.status }}</p>
+                        <!-- Link to continue working on this assignment -->
+                        <a href="{% url 'assignment_detail' assignment.id %}" class="btn btn-outline-primary">Continue</a>
+                        
+                        <!-- Form for Delete button with URL dynamically generated -->
+                        <form action="{% url 'delete_assignment' assignment.id %}" method="POST" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn delete-btn" onclick="return confirm('Are you sure you want to delete this assignment?');">Delete</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <p class="text-center col-12">You have no assignments.</p>
+            {% endfor %}
+        </div>
+    </div>
+</body>
+</html>

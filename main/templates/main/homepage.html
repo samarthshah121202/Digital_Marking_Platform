@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Marking Tool</title>
+    <!-- Include Bootstrap CSS -->
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="jumbotron text-center">
+            <h1 class="display-4">Welcome to the Marking Tool</h1>
+            <p class="lead">An efficient platform for educators to streamline grading and feedback.</p>
+            <hr class="my-4">
+            <p>Upload mark schemes, grade submissions, and provide structured feedback with ease.</p>
+            <a class="btn btn-primary btn-lg" href="{% url 'login' %}" role="button">Log In</a>
+            <a class="btn btn-success btn-lg" href="{% url 'register' %}" role="button">Register</a>
+        </div>
+    </div>
+</body>
+</html>

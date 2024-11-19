@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Create New Assignment</title>
+    <link
+      href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        background-color: #f8f9fa;
+        font-family: 'Arial', sans-serif;
+      }
+
+      .container {
+        max-width: 800px;
+        background-color: white;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        margin-top: 50px;
+      }
+
+      h2 {
+        margin-bottom: 30px;
+        font-size: 2rem;
+        color: #343a40;
+      }
+
+      .form-group label {
+        font-weight: bold;
+        color: #495057;
+      }
+
+      .form-control, .form-control-file {
+        border-radius: 5px;
+      }
+
+      .btn-primary {
+        background-color: #007bff;
+        border-color: #007bff;
+      }
+
+      .btn-primary:hover {
+        background-color: #0056b3;
+        border-color: #0056b3;
+      }
+
+      .alert {
+        font-size: 1rem;
+        margin-bottom: 20px;
+      }
+
+      .custom-checkbox .custom-control-input:checked ~ .custom-control-label::before {
+        background-color: #007bff;
+        border-color: #007bff;
+      }
+
+      .form-group input, .form-group select, .form-group textarea {
+        border-radius: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>Create a New Assignment</h2>
+
+      {% if error %}
+      <div class="alert alert-danger">
+        <strong>Error:</strong> {{ error }}
+      </div>
+      {% endif %}
+
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        
+        <!-- Project Name -->
+        <div class="form-group">
+          <label for="id_project_name">Project Name:</label>
+          <input type="text" name="project_name" class="form-control" id="id_project_name" value="{{ form.project_name.value }}">
+        </div>
+
+        <!-- Group Assignment Checkbox -->
+        <div class="form-group">
+          <div class="custom-control custom-checkbox">
+            <input
+              type="checkbox"
+              class="custom-control-input"
+              id="id_is_group_assignment"
+              name="is_group_assignment"
+              {% if form.is_group_assignment.value %} checked {% endif %}
+            />
+            <label class="custom-control-label" for="id_is_group_assignment">
+              Tick if this is a Group Assignment
+            </label>
+          </div>
+        </div>
+
+        <!-- Student Work Upload -->
+        <div class="form-group">
+          <label for="id_student_work">Upload Student PDFs:</label>
+          <input type="file" name="student_work" class="form-control-file" id="id_student_work" multiple />
+        </div>
+
+        <!-- Mark Scheme Upload -->
+        <div class="form-group">
+          <label for="id_markscheme">Upload Mark Scheme (Excel):</label>
+          <input type="file" name="markscheme" class="form-control-file" id="id_markscheme" />
+        </div>
+
+        <!-- Submit Button -->
+        <button type="submit" class="btn btn-primary btn-block">Create Assignment</button>
+      </form>
+    </div>
+  </body>
+</html>
