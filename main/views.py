@@ -71,7 +71,7 @@ def create_assignment(request): # Function to handle the creation of a new assig
                     markscheme_path = os.path.join(project_folder, "markscheme.xlsx")
                     handle_uploaded_file(request.FILES["markscheme"], markscheme_path)          
                     # Handle the uploaded Excel mark scheme (conversion to CSV or other processing)
-                    handle_upload_excel_sheet(markscheme_path, project_folder, "markscheme")
+                    handle_upload_excel_sheet(markscheme_path, project_folder, "markscheme", assignment)
 
                 # Save the assignment instance after creating student works and handling files
                 assignment.save()
@@ -209,7 +209,7 @@ def view_markscheme(request, assignment_id, submission_id):
             'modules',
             'modules__questions',
             'modules__questions__feedbacks',
-        ).all()
+        ).filter(assignment=assignment)
 
         return render(request, 'main/view_markscheme.html', {
             'assignment': assignment,
@@ -284,7 +284,7 @@ def view_marks(request, assignment_id):
             'modules__questions',
             'modules__questions__feedbacks',
             'modules__questions__studentmark_set'
-        ).all()
+        ).filter(assignment=assignment)
 
         # Process the data to include marks
         processed_sections = []
@@ -307,6 +307,7 @@ def view_marks(request, assignment_id):
                         'mark': student_mark.feedback.mark if student_mark else 0,
                         'feedback_text': student_mark.feedback.feedback_text if student_mark else "No mark recorded"
                     }
+                    logger.info(f"question data {question_data}")
                     processed_questions.append(question_data)
                     if student_mark:
                         module_total += student_mark.feedback.mark
@@ -316,6 +317,8 @@ def view_marks(request, assignment_id):
                     'questions': processed_questions,
                     'total': module_total
                 }
+                logger.info(f"module data {module_data}")
+
                 processed_modules.append(module_data)
                 section_total += module_total
             
@@ -324,8 +327,11 @@ def view_marks(request, assignment_id):
                 'modules': processed_modules,
                 'total': section_total
             }
+            logger.info(f"section data {section_data}")
             processed_sections.append(section_data)
             total_marks += section_total
+            logger.info(f"total {total_marks}")
+
 
         return render(request, 'main/view_marks.html', {
             'assignment': assignment,

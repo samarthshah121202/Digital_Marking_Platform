@@ -23,7 +23,7 @@ class Assignment(models.Model):
         """Calculate total possible marks for the entire assignment"""
         sections = Section.objects.filter(
             modules__questions__feedbacks__isnull=False
-        ).distinct()
+        ).filter(assignment=self).distinct()
         return sum(section.total_possible_marks for section in sections)
 
     def __str__(self):
@@ -46,6 +46,11 @@ class StudentWork(models.Model):
 # read the markscheme file and create the questions and feedbacks
 class Section(models.Model):
     section_name = models.CharField(max_length=200)
+    assignment = models.ForeignKey(
+        Assignment, 
+        on_delete=models.CASCADE,
+        related_name='sections'
+    )
 
     @property
     def total_possible_marks(self):

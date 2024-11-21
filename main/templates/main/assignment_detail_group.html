@@ -27,12 +27,7 @@
                 >
                   <h5 class="mb-0">Group {{ group.grouper }}</h5>
                   <small>
-                    <p class="mb-0">
-                      Debug: Assignment ID: {{ assignment.id }}<br />
-                      Group: {{ group.grouper }}<br />
-                      First student submission ID: {{
-                      group.list.0.id|default:"No submission ID" }}
-                    </p>
+                  
                   </small>
 
                   {% if group.list.0.id %}

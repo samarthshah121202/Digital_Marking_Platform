@@ -80,7 +80,7 @@ def handle_uploaded_file(f, filepath):
         for chunk in f.chunks():
             destination.write(chunk)
 
-def create_markscheme_objects(markscheme_data_frame):
+def create_markscheme_objects(assignment, markscheme_data_frame):
     sections = []
     modules = []
     questions = []
@@ -104,7 +104,8 @@ def create_markscheme_objects(markscheme_data_frame):
             # Create Section
             if "Part" in first_col:
                 current_section = Section.objects.create(
-                    section_name=first_col
+                    section_name=first_col,
+                    assignment=assignment
                 )
                 sections.append(current_section)
                 current_module = None  # Reset current module
@@ -156,13 +157,13 @@ def create_markscheme_objects(markscheme_data_frame):
 
     return sections, modules, questions, feedbacks
 
-def handle_upload_excel_sheet(filePath, save_folder, filename):
+def handle_upload_excel_sheet(filePath, save_folder, filename, assignment):
     excel_file = pd.ExcelFile(filePath)
     sheet_names = excel_file.sheet_names
     df = pd.read_excel(filePath, sheet_name=sheet_names[0])
 
     csv_filename = os.path.join(save_folder, f"{filename}.csv")
-    create_markscheme_objects(df)
+    create_markscheme_objects(assignment, df)
 
     df.to_csv(csv_filename, index=False, encoding='cp1252')
 
