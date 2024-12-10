@@ -174,39 +174,46 @@ def handle_upload_excel_sheet(filePath, save_folder, filename, assignment):
 
     return sheet_names
 
-def create_feedback_doc(student_infos, sections, assignment_title,student_feedback_doc_path):
+def create_feedback_doc(student_infos, sections, assignment_title, student_feedback_doc_path):
     doc = Document()
     doc.add_heading(assignment_title, level=1)
 
-     # Create a table with rows and columns based on data
+    # Skip the header row [0] and get the student info from row [1]
+    first_name = student_infos[1][0]  
+    last_name = student_infos[1][1]   
+    student_id = student_infos[1][2]  # Get the student ID from the third column
+    
+    # Create filename with student ID included
+    filename = f"{first_name}_{last_name}_{student_id}_Student_Feedback.docx"
+    full_path = os.path.join(student_feedback_doc_path, filename)
+
+    # Create and populate student info table
     student_table = doc.add_table(rows=len(student_infos), cols=len(student_infos[0]))
-    student_table.style = 'Table Grid'  # Apply a table style
+    student_table.style = 'Table Grid'
 
     # Populate the table with data
     for row_idx, row_data in enumerate(student_infos):
         for col_idx, cell_data in enumerate(row_data):
-            student_table.cell(row_idx, col_idx).text = cell_data
+            student_table.cell(row_idx, col_idx).text = str(cell_data)
 
+    # Add sections, modules, and feedback
     for section in sections:
-
         doc.add_heading(section["section"].section_name, level=2)
 
         for module in section["modules"]:
-
             doc.add_heading(module["module"].module_name, level=4)
 
             for question in module["questions"]:
                 feedback_paragraph = doc.add_paragraph()
-
-                # Apply conditional formatting
                 feedback_text = question["feedback_text"]
-                is_positive_feedback = True
-
+                
                 # Add text with appropriate styling
                 feedback_run = feedback_paragraph.add_run(feedback_text)
-                if is_positive_feedback:
-                    feedback_run.font.color.rgb = RGBColor(0, 128, 0)  # Green color
+                feedback_run.font.color.rgb = RGBColor(0, 128, 0)  # Green color
                 feedback_paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
 
-    doc.save(student_feedback_doc_path + ".docx")
-    logger.info(f"Feedback document created at: {student_feedback_doc_path}")
+    # Ensure directory exists and save
+    os.makedirs(os.path.dirname(full_path), exist_ok=True)
+    doc.save(full_path)
+    logger.info(f"Document saved successfully at: {full_path}")
+    return full_path
