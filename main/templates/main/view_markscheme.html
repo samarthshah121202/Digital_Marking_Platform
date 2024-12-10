@@ -345,6 +345,12 @@
         updateTotalMarks(questionId);
       }
 
+      const is_group_assignment =
+        "{{ assignment.is_group_assignment }}".toLowerCase?.() === "true";
+      const is_group_value = +is_group_assignment;
+      const studentWorkId = "{{ student_work.id }}";
+      const assignmentId = "{{ assignment.id }}";
+
       function checkAndFinish() {
         const tables = document.getElementsByClassName("feedback-table");
         let unmarkedQuestions = [];
@@ -371,21 +377,26 @@
         }
 
         saveAllMarks().then(() => {
-          window.location.href = "{% url 'view_marks' assignment.id %}";
+          window.location.href = `/assignments/${assignmentId}/marks/${studentWorkId}/`;
         });
       }
 
       function saveAllMarks() {
-        return fetch("/save-marks/", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRFToken": getCookie("csrftoken"),
-          },
-          body: JSON.stringify({
-            marks: marksData,
-          }),
-        })
+        return fetch(
+          `/save-marks?submission_id=${studentWorkId}${
+            is_group_assignment ? "&is_group=1" : "&is_group=0"
+          }`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": getCookie("csrftoken"),
+            },
+            body: JSON.stringify({
+              marks: marksData,
+            }),
+          }
+        )
           .then((response) => response.json())
           .then((data) => {
             if (!data.success) {

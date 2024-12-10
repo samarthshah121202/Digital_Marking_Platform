@@ -5,7 +5,7 @@ from django.contrib.auth.decorators import login_required
 from .models import Assignment, StudentWork, Section, StudentMark, Question, Feedback
 import os
 from .forms import AssignmentForm
-from .utils import handle_uploaded_file, handle_upload_excel_sheet, extract_student_info_from_pdf
+from .utils import handle_uploaded_file, handle_upload_excel_sheet, extract_student_info_from_pdf, create_feedback_doc
 from django.conf import settings
 import csv
 import logging
@@ -16,6 +16,7 @@ import json
 from django.db import transaction
 from django.templatetags.static import static
 from django.contrib import messages
+
 
 
 logger = logging.getLogger(__name__)
@@ -32,20 +33,22 @@ def create_assignment(request): # Function to handle the creation of a new assig
                 # Get the project name and create a user-specific folder for the project
                 project_name = form.cleaned_data["project_name"] # Get the project name from the form
                 project_folder = os.path.join(settings.MEDIA_ROOT, "assignments", request.user.username, project_name) # Create a path to the project folder
-                os.makedirs(project_folder, exist_ok=True) # Create the project folder if it doesn't exist
+                student_submissions_path = os.path.join(project_folder, "student_submissions")
+                student_feedback_doc_path =  os.path.join(project_folder, "student_feedback")
+                os.makedirs(student_submissions_path,exist_ok=True) # Create the project folder if it doesn't exist
+                os.makedirs(student_feedback_doc_path,exist_ok=True)
 
                 # Create an Assignment instance linked to the logged-in user
                 assignment = Assignment.objects.create(
                     user=request.user, # Link the assignment to the logged-in user
                     project_name=project_name, # Set the project name
-                    markscheme=request.FILES.get("markscheme"), # Store the uploaded mark scheme if provided
                     is_group_assignment=form.cleaned_data["is_group_assignment"]  # Store the group assignment status
                 )
 
                 # Save each student work file as a separate StudentWork instance
                 for index, file in enumerate(request.FILES.getlist('student_work')): # Iterate over each uploaded student work file
                     # Save the student work file to the specific project folder
-                    student_work_path = os.path.join(project_folder, f"student_work_{index}.pdf") # Create a path to the student work file
+                    student_work_path = os.path.join(student_submissions_path, f"student_work_{index}.pdf") # Create a path to the student work file
                     handle_uploaded_file(file, student_work_path)
 
                     # Extract student information from the uploaded PDF using Tabula
@@ -53,10 +56,12 @@ def create_assignment(request): # Function to handle the creation of a new assig
 
                     logger.info(f"file: {file}") # Log the file
 
+                    file_path = os.path.join( request.user.username, project_name, "student_submissions", f"student_work_{index}.pdf")
+
                     for student in student_info: # Iterate over each student in the student info list
                         # Optionally, save the extracted student info to the StudentWork model
                         student_work = StudentWork.objects.create( # Create a new StudentWork instance
-                            student_file=file, # Set the student work file
+                            student_file_path = file_path,
                             first_name=student['first_name'], # Set the first name
                             last_name=student['last_name'], # Set the last name
                             student_number=student['student_number'], # Set the student number
@@ -68,7 +73,7 @@ def create_assignment(request): # Function to handle the creation of a new assig
 
                 # Process the mark scheme Excel file if uploaded
                 if 'markscheme' in request.FILES: # Check if the mark scheme file is uploaded
-                    markscheme_path = os.path.join(project_folder, "markscheme.xlsx")
+                    markscheme_path = os.path.join(project_folder, "markscheme","markscheme.xlsx")
                     handle_uploaded_file(request.FILES["markscheme"], markscheme_path)          
                     # Handle the uploaded Excel mark scheme (conversion to CSV or other processing)
                     handle_upload_excel_sheet(markscheme_path, project_folder, "markscheme", assignment)
@@ -145,7 +150,8 @@ def assignment_detail(request, assignment_id):
         'last_name',
         'student_number',
         'group_number',
-        'id'
+        'id',
+        "is_marked"
     )
 
 
@@ -190,6 +196,7 @@ def delete_assignment(request, assignment_id):
     
     return redirect('dashboard')
 
+
 @login_required
 def view_markscheme(request, assignment_id, submission_id):
     try:
@@ -197,13 +204,11 @@ def view_markscheme(request, assignment_id, submission_id):
         # Get the specific student work
         student_work = assignment.student_works.get(id=submission_id) if submission_id else assignment.student_works.first()
         
-        path = student_work.student_file.path.replace('/student_works/', '')
+        path = student_work.student_file_path
         student_work_path = static(path)
         
         # Debug prints
-        print(f"Student work: {student_work}")
-        print(f"File path: {student_work.student_file.path}")
-        print(f"File URL: {student_work.student_file.url}")
+        print(f"Student work path: {student_work_path}")
         
         sections = Section.objects.prefetch_related(
             'modules',
@@ -225,32 +230,53 @@ def view_markscheme(request, assignment_id, submission_id):
 @login_required
 @require_POST
 def save_marks(request):
+
+    def get_students(is_group_project, submission_id):
+        if is_group_project:
+            first_student_in_group = StudentWork.objects.get(id=submission_id)
+            group_number = first_student_in_group.group_number
+            return StudentWork.objects.filter(group_number=group_number)
+
+        return StudentWork.objects.get(id=submission_id) 
+
     try:
         data = json.loads(request.body)
         marks_data = data.get('marks', {})
+        submission_id= request.GET.get('submission_id', -1)
+        is_group = int(request.GET.get("is_group", "0"))
+
+        student = get_students(is_group == 1, submission_id)
         
+       
+
         # Start a transaction to ensure all marks are saved or none are
         with transaction.atomic():
             for question_id, mark_info in marks_data.items():
-                # Extract the actual question ID from the format "question-X"
                 clean_question_id = question_id.replace('question-', '')
-                
                 # Get the question
                 question = Question.objects.get(id=clean_question_id)
                 
-                # Delete any existing marks for this question/student combination
-                StudentMark.objects.filter(
-                    student=request.user,
-                    question=question
-                ).delete()
-                
                 # Get the feedback and create new mark
                 feedback = Feedback.objects.get(id=mark_info['feedbackId'])
-                StudentMark.objects.create(
-                    student=request.user,
-                    question=question,
-                    feedback=feedback
-                )
+
+                if is_group == 0:
+                    StudentMark.objects.create(
+                        student=student,
+                        question=question,
+                        feedback=feedback
+                    )
+                    student.is_marked = True
+                    student.save()
+                else:
+                    for participant in student:
+                        StudentMark.objects.create(
+                            student=participant,
+                            question=question,
+                            feedback=feedback
+                        )
+                        participant.is_marked = True
+                        participant.save()
+
 
         return JsonResponse({
             'success': True,
@@ -274,17 +300,33 @@ def save_marks(request):
         }, status=400)
 
 @login_required
-def view_marks(request, assignment_id):
+def view_marks(request, assignment_id, submission_id):
     try:
         assignment = Assignment.objects.get(id=assignment_id)
-        
-        # Get all sections with related data
+
+        project_name = assignment.project_name # Get the project name from the form
+        project_folder = os.path.join(settings.MEDIA_ROOT, "assignments", request.user.username, project_name) # Create a path to the project folder
+        student_feedback_doc_path =  os.path.join(project_folder, "student_feedback")
+
+        student_work = assignment.student_works.get(id=submission_id)
+        logger.info(f"student work {student_work}")
+
+        if not isinstance(student_work, StudentWork):
+            logger.error(f"Invalid student_work fetched: {student_work}")
+        else:
+            logger.info(f"Fetched StudentWork: {student_work} {student_work.first_name} {student_work.last_name}")
+
         sections = Section.objects.prefetch_related(
             'modules',
             'modules__questions',
             'modules__questions__feedbacks',
             'modules__questions__studentmark_set'
-        ).filter(assignment=assignment)
+        ).filter(
+            assignment=assignment,
+            modules__questions__studentmark__student=student_work
+        ).distinct()
+
+        logger.info(f" sections {len(sections)}")
 
         # Process the data to include marks
         processed_sections = []
@@ -293,21 +335,20 @@ def view_marks(request, assignment_id):
         for section in sections:
             section_total = 0
             processed_modules = []
-            
+
             for module in section.modules.all():
                 module_total = 0
                 processed_questions = []
                 
                 for question in module.questions.all():
                     # Get the student's mark for this question
-                    student_mark = question.studentmark_set.filter(student=request.user).first()
+                    student_mark = question.studentmark_set.filter(student=student_work).first()
                     
                     question_data = {
                         'question': question,
                         'mark': student_mark.feedback.mark if student_mark else 0,
                         'feedback_text': student_mark.feedback.feedback_text if student_mark else "No mark recorded"
                     }
-                    logger.info(f"question data {question_data}")
                     processed_questions.append(question_data)
                     if student_mark:
                         module_total += student_mark.feedback.mark
@@ -317,7 +358,6 @@ def view_marks(request, assignment_id):
                     'questions': processed_questions,
                     'total': module_total
                 }
-                logger.info(f"module data {module_data}")
 
                 processed_modules.append(module_data)
                 section_total += module_total
@@ -327,19 +367,32 @@ def view_marks(request, assignment_id):
                 'modules': processed_modules,
                 'total': section_total
             }
-            logger.info(f"section data {section_data}")
+            # logger.info(f"section data {section_data}")
             processed_sections.append(section_data)
             total_marks += section_total
-            logger.info(f"total {total_marks}")
 
+        student_info = [["First Name", "Last Name", "ID"]]
+        if assignment.is_group_assignment:
+            group_members = StudentWork.objects.filter(group_number=student_work.group_number)
+            for member in group_members:
+                student_info.append([member.first_name, member.last_name, member.student_number])
+        else:
+            tmp = StudentWork.objects.get(id=submission_id)
+            student_info.append([tmp.first_name, tmp.last_name, tmp.student_number])
+
+        create_feedback_doc(student_info,processed_sections, assignment.project_name, student_feedback_doc_path)
+
+        logger.info(f"{assignment} {processed_sections}")
 
         return render(request, 'main/view_marks.html', {
             'assignment': assignment,
             'processed_sections': processed_sections,
             'total_marks': total_marks,
+            'submission_id': student_work.id
         })
         
     except Assignment.DoesNotExist:
         return render(request, 'main/view_marks.html', {
             'error': 'Assignment not found'
         })
+    

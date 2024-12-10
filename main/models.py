@@ -11,7 +11,6 @@ class Assignment(models.Model):
         related_name='assignments'
     )
     project_name = models.CharField(max_length=255)
-    markscheme = models.FileField(upload_to='markschemes/', blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     is_group_assignment = models.BooleanField(default=False)
 
@@ -36,11 +35,12 @@ class StudentWork(models.Model):
         on_delete=models.CASCADE,
         related_name='student_works'
     )
-    student_file = models.FileField(upload_to='student_works/')
+    student_file_path = models.CharField(max_length=1000)
     first_name = models.CharField(max_length=100, blank=True, null=True)
     last_name = models.CharField(max_length=100, blank=True, null=True)
     student_number = models.CharField(max_length=20, blank=True, null=True)
     group_number = models.SmallIntegerField(null=True, blank=True)
+    is_marked = models.BooleanField(default=False)
 
 
 # read the markscheme file and create the questions and feedbacks
@@ -100,7 +100,7 @@ class Feedback(models.Model):
         return f"{self.feedback_key} - {self.mark} marks"
 
 class StudentMark(models.Model):
-    student = models.ForeignKey(User, on_delete=models.CASCADE)
+    student = models.ForeignKey(StudentWork, on_delete=models.CASCADE)
     question = models.ForeignKey(Question, on_delete=models.CASCADE)
     feedback = models.ForeignKey(Feedback, on_delete=models.CASCADE)
     marked_at = models.DateTimeField(auto_now_add=True)

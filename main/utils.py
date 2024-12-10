@@ -1,10 +1,15 @@
 import os
 import pandas as pd
 from django.conf import settings
+from docx.shared import RGBColor
+from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+from docx.oxml import parse_xml
+from docx.oxml.ns import nsdecls
 import fitz  # PyMuPDF
 import re
 import tabula
 import logging
+from docx import Document 
 
 from main.models import Feedback, Module, Question, Section
 logger = logging.getLogger(__name__)
@@ -79,7 +84,7 @@ def handle_uploaded_file(f, filepath):
     with open(filepath, "wb+") as destination:
         for chunk in f.chunks():
             destination.write(chunk)
-
+    
 def create_markscheme_objects(assignment, markscheme_data_frame):
     sections = []
     modules = []
@@ -162,9 +167,46 @@ def handle_upload_excel_sheet(filePath, save_folder, filename, assignment):
     sheet_names = excel_file.sheet_names
     df = pd.read_excel(filePath, sheet_name=sheet_names[0])
 
-    csv_filename = os.path.join(save_folder, f"{filename}.csv")
+    csv_filename = os.path.join(save_folder,"markscheme",f"{filename}.csv")
     create_markscheme_objects(assignment, df)
 
     df.to_csv(csv_filename, index=False, encoding='cp1252')
 
     return sheet_names
+
+def create_feedback_doc(student_infos, sections, assignment_title,student_feedback_doc_path):
+    doc = Document()
+    doc.add_heading(assignment_title, level=1)
+
+     # Create a table with rows and columns based on data
+    student_table = doc.add_table(rows=len(student_infos), cols=len(student_infos[0]))
+    student_table.style = 'Table Grid'  # Apply a table style
+
+    # Populate the table with data
+    for row_idx, row_data in enumerate(student_infos):
+        for col_idx, cell_data in enumerate(row_data):
+            student_table.cell(row_idx, col_idx).text = cell_data
+
+    for section in sections:
+
+        doc.add_heading(section["section"].section_name, level=2)
+
+        for module in section["modules"]:
+
+            doc.add_heading(module["module"].module_name, level=4)
+
+            for question in module["questions"]:
+                feedback_paragraph = doc.add_paragraph()
+
+                # Apply conditional formatting
+                feedback_text = question["feedback_text"]
+                is_positive_feedback = True
+
+                # Add text with appropriate styling
+                feedback_run = feedback_paragraph.add_run(feedback_text)
+                if is_positive_feedback:
+                    feedback_run.font.color.rgb = RGBColor(0, 128, 0)  # Green color
+                feedback_paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
+
+    doc.save(student_feedback_doc_path + ".docx")
+    logger.info(f"Feedback document created at: {student_feedback_doc_path}")

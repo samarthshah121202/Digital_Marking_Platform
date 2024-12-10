@@ -19,25 +19,26 @@
             <div class="card-body">
               <h4>Submissions:</h4>
 
-              {% if student_info %} {% if assignment.is_group_assignment %} {% regroup student_info by group_number as grouped_students %} 
+              {% if student_info %} {% if assignment.is_group_assignment %} 
+              {% regroup student_info by group_number as grouped_students %} 
               {% for group in grouped_students %}
               <div class="submission-card card mb-3">
                 <div
                   class="submission-header d-flex justify-content-between align-items-center"
                 >
                   <h5 class="mb-0">Group {{ group.grouper }}</h5>
-                  <small>
-                  
-                  </small>
+                  <small> </small>
 
-                  {% if group.list.0.id %}
+                  {% if group.list.0.id %} {% if group.list.0.is_marked %}
+                  <a class="btn btn-success btn-sm"> Already Marked </a>
+                  {% else %}
                   <a
                     href="{% url 'view_markscheme' assignment_id=assignment.id submission_id=group.list.0.id %}"
                     class="btn btn-success start-button"
                   >
                     Start Marking
                   </a>
-                  {% else %}
+                  {% endif %} {% else %}
                   <span class="text-danger">No submission ID available</span>
                   {% endif %}
                 </div>
