@@ -16,6 +16,7 @@ import json
 from django.db import transaction
 from django.templatetags.static import static
 from django.contrib import messages
+import shutil
 
 
 
@@ -169,32 +170,29 @@ def assignment_detail(request, assignment_id):
 @login_required
 def delete_assignment(request, assignment_id):
     try:
-        # Get the assignment
-        assignment = Assignment.objects.get(id=assignment_id, user=request.user)
+        # Get the assignment and verify ownership
+        assignment = get_object_or_404(Assignment, id=assignment_id, user=request.user)
         
-        if request.method == 'POST':
-            # Delete associated files first
-            if assignment.markscheme:
-                assignment.markscheme.delete()
-            
-            # Delete associated student works
-            for student_work in assignment.student_works.all():
-                if student_work.student_file:
-                    student_work.student_file.delete()
-                student_work.delete()
-            
-            # Delete the assignment
-            assignment.delete()
-            
-            messages.success(request, 'Assignment deleted successfully.')
-            return redirect('dashboard')
-            
+        # Get the project folder path
+        project_folder = os.path.join(settings.MEDIA_ROOT, "assignments", 
+                                    request.user.username, assignment.project_name)
+        
+        # Delete all related database records
+        assignment.delete()
+        
+        # Delete the project folder and all its contents
+        if os.path.exists(project_folder):
+            import shutil
+            shutil.rmtree(project_folder)
+        
+        messages.success(request, 'Assignment deleted successfully')
+        return redirect('dashboard')
     except Assignment.DoesNotExist:
-        messages.error(request, 'Assignment not found.')
+        messages.error(request, 'Assignment not found')
+        return redirect('dashboard')
     except Exception as e:
         messages.error(request, f'Error deleting assignment: {str(e)}')
-    
-    return redirect('dashboard')
+        return redirect('dashboard')
 
 
 @login_required
