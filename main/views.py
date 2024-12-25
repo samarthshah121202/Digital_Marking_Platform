@@ -16,7 +16,7 @@ import json
 from django.db import transaction
 from django.templatetags.static import static
 from django.contrib import messages
-import shutil
+from openpyxl import Workbook
 
 
 
@@ -78,6 +78,15 @@ def create_assignment(request): # Function to handle the creation of a new assig
                     handle_uploaded_file(request.FILES["markscheme"], markscheme_path)          
                     # Handle the uploaded Excel mark scheme (conversion to CSV or other processing)
                     handle_upload_excel_sheet(markscheme_path, project_folder, "markscheme", assignment)
+
+                # Create and save the marks workbook
+                wb = Workbook()
+                ws = wb.active
+                ws.title = "Student Marks"
+                
+                # Save the workbook in the project folder
+                marks_file_path = os.path.join(project_folder, "student_marks.xlsx")
+                wb.save(marks_file_path)
 
                 # Save the assignment instance after creating student works and handling files
                 assignment.save()
@@ -369,12 +378,19 @@ def view_marks(request, assignment_id, submission_id):
             processed_sections.append(section_data)
             total_marks += section_total
 
-        student_info = [["First Name", "Last Name", "ID"]]
+        # Modify the headers based on assignment type
         if assignment.is_group_assignment:
+            student_info = [["First Name", "Last Name", "ID", "Group No."]]
             group_members = StudentWork.objects.filter(group_number=student_work.group_number)
             for member in group_members:
-                student_info.append([member.first_name, member.last_name, member.student_number])
+                student_info.append([
+                    member.first_name, 
+                    member.last_name, 
+                    member.student_number,
+                    member.group_number  # Add group number to each student's info
+                ])
         else:
+            student_info = [["First Name", "Last Name", "ID"]]
             tmp = StudentWork.objects.get(id=submission_id)
             student_info.append([tmp.first_name, tmp.last_name, tmp.student_number])
 

@@ -154,11 +154,11 @@ def create_markscheme_objects(assignment, markscheme_data_frame):
                 logger.error(f"Error creating feedback for question {current_question.question}: {str(e)}")
                 logger.error(f"Row values: {row_values}")
 
-    logger.info(f"\n=== Creation Summary ===")
-    logger.info(f"Created {len(sections)} sections")
-    logger.info(f"Created {len(modules)} modules")
-    logger.info(f"Created {len(questions)} questions")
-    logger.info(f"Created {len(feedbacks)} feedbacks")
+    #logger.info(f"\n=== Creation Summary ===")
+    #logger.info(f"Created {len(sections)} sections")
+    #logger.info(f"Created {len(modules)} modules")
+    #logger.info(f"Created {len(questions)} questions")
+    #logger.info(f"Created {len(feedbacks)} feedbacks")
 
     return sections, modules, questions, feedbacks
 
