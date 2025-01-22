@@ -88,16 +88,16 @@ def create_assignment(request): # Function to handle the creation of a new assig
                 
                 wb.remove(wb.worksheets[-1])
 
+                marks_breakdown_sheet = wb[sheet_names[0]]
+                
+
+
+
                 id_sheet = wb[sheet_names[1]]
                 headers = ["Student Id", "Student Name", "Mark"]
                 for col_num, header in enumerate(headers, start=1):
                     id_sheet.cell(row=1, column=col_num, value=header)
 
-                group_list_sheet = wb[sheet_names[2]]
-                headers = ["Student Id", "Student Name", "Mark"]
-                for col_num, header in enumerate(headers, start=1):
-                    group_list_sheet.cell(row=1, column=col_num, value=header)
-                
                 # Save the workbook in the project folder
                 marks_file_path = os.path.join(project_folder, "student_marks.xlsx")
                 wb.save(marks_file_path)
@@ -395,7 +395,8 @@ def view_marks(request, assignment_id, submission_id):
             student_info = [["First Name", "Last Name", "ID", "Group No."]]
             group_members = StudentWork.objects.filter(group_number=student_work.group_number, assignment=assignment).distinct()
             id_table = []
-            group_table = []
+            group_table = [["Group Number:" + str(group_members[0].group_number), "Group Mark:" + str(total_marks)],
+                           ["Name", "Student ID", "Individual Mark"]]
             for member in group_members:
                 student_info.append([
                     member.first_name, 
@@ -404,7 +405,7 @@ def view_marks(request, assignment_id, submission_id):
                     member.group_number  # Add group number to each student's info
                 ])
                 id_table.append([member.student_number, member.first_name + " " + member.last_name, total_marks])
-                group_table.append([member.student_number, member.first_name + " " + member.last_name, total_marks]) 
+                group_table.append([member.first_name + " " + member.last_name, member.student_number,total_marks]) 
 
         else:
             student_info = [["First Name", "Last Name", "ID"]]

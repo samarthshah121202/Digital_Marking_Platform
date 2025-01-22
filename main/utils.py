@@ -222,24 +222,19 @@ def add_to_feedback_sheet(workbook, id_table, group_table):
     def add_to_marks_breakdown():
         pass
 
-    def add_to_group_list():
-        group_list_sheet = workbook["Group List"]
-        for row_data in group_table:
-            new_row = group_list_sheet.max_row + 1 
+    def add_table(table, sheet_name, add_line=False):
+        print(table)
+        sheet = workbook[sheet_name]
+        if add_line is True:
+            table.append(["-"])
+        for row_data in table:
+            new_row = sheet.max_row + 1
             for col_num, cell in enumerate(row_data, start=1):
-                logger.info(f"row={new_row} col={col_num} cell_data={cell} max_row={group_list_sheet.max_row}")
-                group_list_sheet.cell(row=new_row, column=col_num).value = cell
+                logger.info(f"row={new_row} col={col_num} cell_data={cell} max_row={sheet.max_row}")
+                sheet.cell(row=new_row, column=col_num).value = cell
 
-    def add_to_id_list():
-        print(id_table)
-        id_sheet = workbook["Id List"]
-        for row_data in id_table:
-            new_row = id_sheet.max_row + 1 
-            for col_num, cell in enumerate(row_data, start=1):
-                logger.info(f"row={new_row} col={col_num} cell_data={cell} max_row={id_sheet.max_row}")
-                id_sheet.cell(row=new_row, column=col_num).value = cell
 
-    add_to_id_list()
-    add_to_group_list()
+    add_table(id_table, "Id List")
+    add_table(group_table, "Group List", add_line= True)
     add_to_marks_breakdown()
     return 
