@@ -154,11 +154,6 @@ def create_markscheme_objects(assignment, markscheme_data_frame):
                 logger.error(f"Error creating feedback for question {current_question.question}: {str(e)}")
                 logger.error(f"Row values: {row_values}")
 
-    #logger.info(f"\n=== Creation Summary ===")
-    #logger.info(f"Created {len(sections)} sections")
-    #logger.info(f"Created {len(modules)} modules")
-    #logger.info(f"Created {len(questions)} questions")
-    #logger.info(f"Created {len(feedbacks)} feedbacks")
 
     return sections, modules, questions, feedbacks
 
@@ -174,7 +169,8 @@ def handle_upload_excel_sheet(filePath, save_folder, filename, assignment):
 
     return sheet_names
 
-def create_feedback_doc(student_infos, sections, assignment_title, student_feedback_doc_path):
+def create_feedback_doc(student_infos, sections, assignment_title, student_feedback_doc_path, assignment, student_work):
+
     doc = Document()
     doc.add_heading(assignment_title, level=1)
 
@@ -184,7 +180,10 @@ def create_feedback_doc(student_infos, sections, assignment_title, student_feedb
     student_id = student_infos[1][2]  # Get the student ID from the third column
     
     # Create filename with student ID included
-    filename = f"{first_name}_{last_name}_{student_id}_Student_Feedback.docx"
+    if assignment.is_group_assignment:
+        filename = f"Group_{student_work.group_number}_Student_Feedback.docx"
+    else:
+        filename = f"{first_name}_{last_name}_{student_id}_Student_Feedback.docx"
     full_path = os.path.join(student_feedback_doc_path, filename)
 
     # Create and populate student info table
@@ -217,3 +216,30 @@ def create_feedback_doc(student_infos, sections, assignment_title, student_feedb
     doc.save(full_path)
     logger.info(f"Document saved successfully at: {full_path}")
     return full_path
+
+def add_to_feedback_sheet(workbook, id_table, group_table):
+
+    def add_to_marks_breakdown():
+        pass
+
+    def add_to_group_list():
+        group_list_sheet = workbook["Group List"]
+        for row_data in group_table:
+            new_row = group_list_sheet.max_row + 1 
+            for col_num, cell in enumerate(row_data, start=1):
+                logger.info(f"row={new_row} col={col_num} cell_data={cell} max_row={group_list_sheet.max_row}")
+                group_list_sheet.cell(row=new_row, column=col_num).value = cell
+
+    def add_to_id_list():
+        print(id_table)
+        id_sheet = workbook["Id List"]
+        for row_data in id_table:
+            new_row = id_sheet.max_row + 1 
+            for col_num, cell in enumerate(row_data, start=1):
+                logger.info(f"row={new_row} col={col_num} cell_data={cell} max_row={id_sheet.max_row}")
+                id_sheet.cell(row=new_row, column=col_num).value = cell
+
+    add_to_id_list()
+    add_to_group_list()
+    add_to_marks_breakdown()
+    return 

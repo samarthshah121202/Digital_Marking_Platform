@@ -5,7 +5,7 @@ from django.contrib.auth.decorators import login_required
 from .models import Assignment, StudentWork, Section, StudentMark, Question, Feedback
 import os
 from .forms import AssignmentForm
-from .utils import handle_uploaded_file, handle_upload_excel_sheet, extract_student_info_from_pdf, create_feedback_doc
+from .utils import add_to_feedback_sheet, handle_uploaded_file, handle_upload_excel_sheet, extract_student_info_from_pdf, create_feedback_doc
 from django.conf import settings
 import csv
 import logging
@@ -16,7 +16,7 @@ import json
 from django.db import transaction
 from django.templatetags.static import static
 from django.contrib import messages
-from openpyxl import Workbook
+from openpyxl import Workbook, load_workbook
 
 
 
@@ -81,8 +81,22 @@ def create_assignment(request): # Function to handle the creation of a new assig
 
                 # Create and save the marks workbook
                 wb = Workbook()
-                ws = wb.active
-                ws.title = "Student Marks"
+                
+                sheet_names = ["Marks Breakdown","Id List", "Group List"] if assignment.is_group_assignment else ["Marks Breakdown","Id List"]
+                for idx, name in enumerate(sheet_names):
+                    wb.create_sheet(name, idx)
+                
+                wb.remove(wb.worksheets[-1])
+
+                id_sheet = wb[sheet_names[1]]
+                headers = ["Student Id", "Student Name", "Mark"]
+                for col_num, header in enumerate(headers, start=1):
+                    id_sheet.cell(row=1, column=col_num, value=header)
+
+                group_list_sheet = wb[sheet_names[2]]
+                headers = ["Student Id", "Student Name", "Mark"]
+                for col_num, header in enumerate(headers, start=1):
+                    group_list_sheet.cell(row=1, column=col_num, value=header)
                 
                 # Save the workbook in the project folder
                 marks_file_path = os.path.join(project_folder, "student_marks.xlsx")
@@ -316,7 +330,6 @@ def view_marks(request, assignment_id, submission_id):
         student_feedback_doc_path =  os.path.join(project_folder, "student_feedback")
 
         student_work = assignment.student_works.get(id=submission_id)
-        logger.info(f"student work {student_work}")
 
         if not isinstance(student_work, StudentWork):
             logger.error(f"Invalid student_work fetched: {student_work}")
@@ -333,7 +346,6 @@ def view_marks(request, assignment_id, submission_id):
             modules__questions__studentmark__student=student_work
         ).distinct()
 
-        logger.info(f" sections {len(sections)}")
 
         # Process the data to include marks
         processed_sections = []
@@ -381,7 +393,9 @@ def view_marks(request, assignment_id, submission_id):
         # Modify the headers based on assignment type
         if assignment.is_group_assignment:
             student_info = [["First Name", "Last Name", "ID", "Group No."]]
-            group_members = StudentWork.objects.filter(group_number=student_work.group_number)
+            group_members = StudentWork.objects.filter(group_number=student_work.group_number, assignment=assignment).distinct()
+            id_table = []
+            group_table = []
             for member in group_members:
                 student_info.append([
                     member.first_name, 
@@ -389,14 +403,23 @@ def view_marks(request, assignment_id, submission_id):
                     member.student_number,
                     member.group_number  # Add group number to each student's info
                 ])
+                id_table.append([member.student_number, member.first_name + " " + member.last_name, total_marks])
+                group_table.append([member.student_number, member.first_name + " " + member.last_name, total_marks]) 
+
         else:
             student_info = [["First Name", "Last Name", "ID"]]
             tmp = StudentWork.objects.get(id=submission_id)
             student_info.append([tmp.first_name, tmp.last_name, tmp.student_number])
+            id_table = [[tmp.student_number, tmp.first_name + " " + tmp.last_name, total_marks]]
 
-        create_feedback_doc(student_info,processed_sections, assignment.project_name, student_feedback_doc_path)
+        marks_file_path = os.path.join(project_folder, "student_marks.xlsx")
+        wb = load_workbook(marks_file_path)
 
-        logger.info(f"{assignment} {processed_sections}")
+        create_feedback_doc(student_info,processed_sections, assignment.project_name, student_feedback_doc_path, assignment, student_work)
+        add_to_feedback_sheet(wb, id_table, group_table)
+
+        wb.save(marks_file_path)
+        wb.close()
 
         return render(request, 'main/view_marks.html', {
             'assignment': assignment,
