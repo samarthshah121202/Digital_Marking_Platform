@@ -30,7 +30,7 @@
                   <small> </small>
 
                   {% if group.list.0.id %} {% if group.list.0.is_marked %}
-                  <a class="btn btn-success btn-sm"> Already Marked </a>
+                  <a href="{% url 'view_marks' assignment_id=assignment.id submission_id=group.list.0.id %}" class="btn btn-secondary">View Marks</a>
                   {% else %}
                   <a
                     href="{% url 'view_markscheme' assignment_id=assignment.id submission_id=group.list.0.id %}"
@@ -67,6 +67,7 @@
                 </div>
               </div>
               {%endfor %} {% endif %} {% endif %}
+              <a href="{% url 'dashboard' %}" class="btn btn-primary">Back to Dashboard</a>
             </div>
           </div>
         </div>
