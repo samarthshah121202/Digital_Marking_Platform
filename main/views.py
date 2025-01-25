@@ -22,6 +22,7 @@ from openpyxl import Workbook, load_workbook
 
 logger = logging.getLogger(__name__)
 
+markscheme_breakdown = []
 
 def create_assignment(request): # Function to handle the creation of a new assignment
     if request.method == "POST": # Check if the request method is POST
@@ -45,20 +46,35 @@ def create_assignment(request): # Function to handle the creation of a new assig
                     project_name=project_name, # Set the project name
                     is_group_assignment=form.cleaned_data["is_group_assignment"]  # Store the group assignment status
                 )
-
+                student_num = []
+                group_num = []
                 # Save each student work file as a separate StudentWork instance
                 for index, file in enumerate(request.FILES.getlist('student_work')): # Iterate over each uploaded student work file
                     # Save the student work file to the specific project folder
                     student_work_path = os.path.join(student_submissions_path, f"student_work_{index}.pdf") # Create a path to the student work file
                     handle_uploaded_file(file, student_work_path)
 
+                    
                     # Extract student information from the uploaded PDF using Tabula
                     student_info = extract_student_info_from_pdf(student_work_path, is_group=form.cleaned_data["is_group_assignment"])  # Extract student information from the uploaded PDF
-
-                    logger.info(f"file: {file}") # Log the file
-
+                    
+                    #logger.info(f"file: {file}") # Log the file
+                    
+                    # Iterate over each student dictionary in the list
+                    for student in student_info:
+                        if form.cleaned_data["is_group_assignment"]:
+                            if student['group_number'] not in group_num:
+                                group_num.append(student['group_number'])
+                        else:
+                            # Append the student number to the student_num list
+                             student_num.append(student['student_number'])
+                    
+                    
+                
+                    # Print the list of student numbers
+                    
                     file_path = os.path.join( request.user.username, project_name, "student_submissions", f"student_work_{index}.pdf")
-
+                    
                     for student in student_info: # Iterate over each student in the student info list
                         # Optionally, save the extracted student info to the StudentWork model
                         student_work = StudentWork.objects.create( # Create a new StudentWork instance
@@ -70,15 +86,25 @@ def create_assignment(request): # Function to handle the creation of a new assig
                             group_number=student['group_number']  # Associate the student work with the created assignment
                         )
                         # Add the student work instance to the assignment
-                        assignment.student_files.add(student_work) # Add the student work instance to the assignment
-
+                        
+                            
+                          # Corrected line to append student nu
                 # Process the mark scheme Excel file if uploaded
                 if 'markscheme' in request.FILES: # Check if the mark scheme file is uploaded
                     markscheme_path = os.path.join(project_folder, "markscheme","markscheme.xlsx")
                     handle_uploaded_file(request.FILES["markscheme"], markscheme_path)          
                     # Handle the uploaded Excel mark scheme (conversion to CSV or other processing)
-                    handle_upload_excel_sheet(markscheme_path, project_folder, "markscheme", assignment)
+                    sections = handle_upload_excel_sheet(markscheme_path, project_folder, "markscheme", assignment)
 
+                    for section in sections:
+                        markscheme_breakdown.append(section.section_name)
+
+                        for module in section.modules.all():
+                            markscheme_breakdown.append(module.module_name)
+
+                            for question in module.questions.all():
+                                markscheme_breakdown.append(question.question)
+                
                 # Create and save the marks workbook
                 wb = Workbook()
                 
@@ -89,14 +115,30 @@ def create_assignment(request): # Function to handle the creation of a new assig
                 wb.remove(wb.worksheets[-1])
 
                 marks_breakdown_sheet = wb[sheet_names[0]]
+                marks_breakdown_sheet.cell(row=1, column=1, value="Mark Scheme")
+
+
                 
+                for row_num, item in enumerate(markscheme_breakdown, start=2):
+                    marks_breakdown_sheet.cell(row=row_num, column=1, value=item)
 
+                col_num = 2
+                if assignment.is_group_assignment:
+                    for col_num, item in enumerate(group_num, start=2):
+                        value_to_write = f"Group {item}" 
+                        marks_breakdown_sheet.cell(row=1, column=col_num, value=value_to_write)
 
+                else:
+                    for col_num, item in enumerate(student_num, start=2):
+                        marks_breakdown_sheet.cell(row=1, column=col_num, value=item)
+                    
 
                 id_sheet = wb[sheet_names[1]]
                 headers = ["Student Id", "Student Name", "Mark"]
                 for col_num, header in enumerate(headers, start=1):
                     id_sheet.cell(row=1, column=col_num, value=header)
+                
+               
 
                 # Save the workbook in the project folder
                 marks_file_path = os.path.join(project_folder, "student_marks.xlsx")
@@ -123,7 +165,6 @@ def create_assignment(request): # Function to handle the creation of a new assig
     else:
         form = AssignmentForm()
     return render(request, 'main/create_assignment.html', {'form': form})
-
 
 def homepage(request):
     return render(request, 'main/homepage.html')
@@ -154,6 +195,12 @@ def login_view(request):
             login(request, user)
             return redirect('dashboard')
     return render(request, 'main/login.html')
+
+def logout_view(request):
+    # Log out the user
+    logout(request)
+    # Redirect to the homepage or login page after logout
+    return redirect('homepage')
 
 @login_required
 def dashboard(request):
@@ -334,9 +381,9 @@ def view_marks(request, assignment_id, submission_id):
         if not isinstance(student_work, StudentWork):
             logger.error(f"Invalid student_work fetched: {student_work}")
         else:
-            logger.info(f"Fetched StudentWork: {student_work} {student_work.first_name} {student_work.last_name}")
+            #logger.info(f"Fetched StudentWork: {student_work} {student_work.first_name} {student_work.last_name}")
 
-        sections = Section.objects.prefetch_related(
+            sections = Section.objects.prefetch_related(
             'modules',
             'modules__questions',
             'modules__questions__feedbacks',
@@ -389,7 +436,7 @@ def view_marks(request, assignment_id, submission_id):
             # logger.info(f"section data {section_data}")
             processed_sections.append(section_data)
             total_marks += section_total
-
+        
         # Modify the headers based on assignment type
         if assignment.is_group_assignment:
             student_info = [["First Name", "Last Name", "ID", "Group No."]]
@@ -416,8 +463,14 @@ def view_marks(request, assignment_id, submission_id):
         marks_file_path = os.path.join(project_folder, "student_marks.xlsx")
         wb = load_workbook(marks_file_path)
 
+
         create_feedback_doc(student_info,processed_sections, assignment.project_name, student_feedback_doc_path, assignment, student_work)
-        add_to_feedback_sheet(wb, id_table, group_table)
+       
+        if assignment.is_group_assignment:
+            add_to_feedback_sheet(wb, id_table, group_table)
+        else:
+            add_to_feedback_sheet(wb, id_table)
+
 
         wb.save(marks_file_path)
         wb.close()

@@ -26,14 +26,14 @@ def extract_student_info_from_pdf(pdf_path, is_group=False):
         # Assuming the first table is the one that contains the student data
         # You may need to inspect the tables to ensure this is correct
         table = tables[0]
-        logger.info(table)
+        #logger.info(table)
 
         first_name = None
         last_name = None
         student_number = None
         group_number = None 
 
-        logger.info(f"is_group: {is_group}")    
+        #logger.info(f"is_group: {is_group}")    
 
         # Assuming the table has columns for first name, last name, and student number
         if is_group:
@@ -48,7 +48,7 @@ def extract_student_info_from_pdf(pdf_path, is_group=False):
                 first_name = row[1]
                 student_number = row[2]
                 group_number = row[3]
-                logger.info(f"first_name: {first_name}, last_name: {last_name}, student_number: {student_number}, group_number: {group_number}")
+                #logger.info(f"first_name: {first_name}, last_name: {last_name}, student_number: {student_number}, group_number: {group_number}")
                 student_info.append({
                     "first_name": first_name,
                     "last_name": last_name,
@@ -64,7 +64,7 @@ def extract_student_info_from_pdf(pdf_path, is_group=False):
                     last_name = row[1]
                 elif row[0] == 'Student ID':
                     student_number = row[1]
-                logger.info(f"first_name: {first_name}, last_name: {last_name}, student_number: {student_number}")
+                #logger.info(f"first_name: {first_name}, last_name: {last_name}, student_number: {student_number}")
 
             if first_name and last_name and student_number:
                 student_info.append({
@@ -74,7 +74,7 @@ def extract_student_info_from_pdf(pdf_path, is_group=False):
                     "group_number": group_number
                 })
 
-    logger.info(f"RETURNING FROM extract_student_info_from_pdf: {student_info} {type(student_info)}")
+    #logger.info(f"RETURNING FROM extract_student_info_from_pdf: {student_info} {type(student_info)}")
     return student_info
 
 def handle_uploaded_file(f, filepath):
@@ -154,20 +154,20 @@ def create_markscheme_objects(assignment, markscheme_data_frame):
                 logger.error(f"Error creating feedback for question {current_question.question}: {str(e)}")
                 logger.error(f"Row values: {row_values}")
 
+    #logger.info(f"sections:{sections}")
+    return sections
 
-    return sections, modules, questions, feedbacks
-
-def handle_upload_excel_sheet(filePath, save_folder, filename, assignment):
+def handle_upload_excel_sheet(filePath, save_folder, filename, assignment) -> list[Section]:
     excel_file = pd.ExcelFile(filePath)
     sheet_names = excel_file.sheet_names
     df = pd.read_excel(filePath, sheet_name=sheet_names[0])
 
     csv_filename = os.path.join(save_folder,"markscheme",f"{filename}.csv")
-    create_markscheme_objects(assignment, df)
+    markscheme_obj = create_markscheme_objects(assignment, df)
 
     df.to_csv(csv_filename, index=False, encoding='cp1252')
 
-    return sheet_names
+    return markscheme_obj
 
 def create_feedback_doc(student_infos, sections, assignment_title, student_feedback_doc_path, assignment, student_work):
 
@@ -214,11 +214,10 @@ def create_feedback_doc(student_infos, sections, assignment_title, student_feedb
     # Ensure directory exists and save
     os.makedirs(os.path.dirname(full_path), exist_ok=True)
     doc.save(full_path)
-    logger.info(f"Document saved successfully at: {full_path}")
+    #logger.info(f"Document saved successfully at: {full_path}")
     return full_path
 
-def add_to_feedback_sheet(workbook, id_table, group_table):
-
+def add_to_feedback_sheet(workbook, id_table, group_table=None):
     def add_to_marks_breakdown():
         pass
 
@@ -226,15 +225,18 @@ def add_to_feedback_sheet(workbook, id_table, group_table):
         print(table)
         sheet = workbook[sheet_name]
         if add_line is True:
-            table.append(["-"])
+            table.append([" "])
         for row_data in table:
             new_row = sheet.max_row + 1
             for col_num, cell in enumerate(row_data, start=1):
-                logger.info(f"row={new_row} col={col_num} cell_data={cell} max_row={sheet.max_row}")
+                #logger.info(f"row={new_row} col={col_num} cell_data={cell} max_row={sheet.max_row}")
                 sheet.cell(row=new_row, column=col_num).value = cell
 
-
     add_table(id_table, "Id List")
-    add_table(group_table, "Group List", add_line= True)
+    
+    # Only add group_table if it is provided (not None)
+    if group_table is not None:
+        add_table(group_table, "Group List", add_line=True)
+    
     add_to_marks_breakdown()
     return 

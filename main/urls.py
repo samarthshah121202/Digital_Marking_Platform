@@ -12,6 +12,7 @@ urlpatterns = [
     path('assignments/<int:assignment_id>/marks/<int:submission_id>/', views.view_marks, name='view_marks'),
     path('delete_assignment/<int:assignment_id>/', views.delete_assignment, name='delete_assignment'),
     path('save-marks', views.save_marks, name='save_marks'),
+    path('logout/', views.logout_view, name='logout'),
 ] 
 
 
