@@ -10,15 +10,32 @@ import re
 import tabula
 import logging
 from docx import Document 
+from pypdf import PdfReader
+from openpyxl import load_workbook
+from operator import attrgetter
+from django.http import HttpResponse
 
 from main.models import Feedback, Module, Question, Section
 logger = logging.getLogger(__name__)
 
+#def read_group_number(pdf_path):
+    
 
 
 def extract_student_info_from_pdf(pdf_path, is_group=False):
     # Use tabula to extract tables from the first page of the PDF
+    reader = PdfReader(pdf_path)
+    page = reader.pages[0]
+    text = page.extract_text()
+    txt_arr = text.split(" ")
+    for i in range(len(txt_arr)):
+        if txt_arr[i] == "\nGroup":
+            group_num = txt_arr[i + 1]
+    
+    
+    
     tables = tabula.read_pdf(pdf_path, pages=1, multiple_tables=True)
+    #("group number: ", group_num)
 
     student_info = []
 
@@ -26,28 +43,30 @@ def extract_student_info_from_pdf(pdf_path, is_group=False):
         # Assuming the first table is the one that contains the student data
         # You may need to inspect the tables to ensure this is correct
         table = tables[0]
+      #  print(table)
         #logger.info(table)
 
         first_name = None
         last_name = None
         student_number = None
-        group_number = None 
+       # group_number = None 
 
         #logger.info(f"is_group: {is_group}")    
 
         # Assuming the table has columns for first name, last name, and student number
         if is_group:
             for index, row in table.iterrows():
+               # print(index, row)
                 
-                if index == 0:
-                    continue
+ 
                 
                 logger.error(f"row: {row}")  
 
                 last_name = row[0]
                 first_name = row[1]
                 student_number = row[2]
-                group_number = row[3]
+                #group_number = row[3]
+                group_number = group_num
                 #logger.info(f"first_name: {first_name}, last_name: {last_name}, student_number: {student_number}, group_number: {group_number}")
                 student_info.append({
                     "first_name": first_name,
@@ -55,8 +74,10 @@ def extract_student_info_from_pdf(pdf_path, is_group=False):
                     "student_number": student_number,
                     "group_number": group_number
                 })
+            #    print(student_info)
         else:
             for index, row in table.iterrows():
+               # print(index, row)
                 # Extract the first name, last name, and student number
                 if row[0] == 'First Name':
                     first_name = row[1]
@@ -71,7 +92,6 @@ def extract_student_info_from_pdf(pdf_path, is_group=False):
                     "first_name": first_name,
                     "last_name": last_name,
                     "student_number": student_number,
-                    "group_number": group_number
                 })
 
     #logger.info(f"RETURNING FROM extract_student_info_from_pdf: {student_info} {type(student_info)}")
@@ -215,14 +235,18 @@ def create_feedback_doc(student_infos, sections, assignment_title, student_feedb
     os.makedirs(os.path.dirname(full_path), exist_ok=True)
     doc.save(full_path)
     #logger.info(f"Document saved successfully at: {full_path}")
-    return full_path
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+
+    response['Content-Disposition'] = 'attachment; filename="feedback.docx"'
+
+    doc.save(response)
+
+    return response
 
 def add_to_feedback_sheet(workbook, id_table, group_table=None):
-    def add_to_marks_breakdown():
-        pass
 
     def add_table(table, sheet_name, add_line=False):
-        print(table)
+      #  print(table)
         sheet = workbook[sheet_name]
         if add_line is True:
             table.append([" "])
@@ -238,5 +262,104 @@ def add_to_feedback_sheet(workbook, id_table, group_table=None):
     if group_table is not None:
         add_table(group_table, "Group List", add_line=True)
     
-    add_to_marks_breakdown()
+    #add_to_marks_breakdown()
     return 
+def question_mark_excel(workbook, processed_questions, processed_modules, processed_sections, group_number):
+   # print("QUrkESTION MARK EXCEL CALED")
+    marks_breakdown_sheet = workbook["Marks Breakdown"]
+
+    marks = []  # {{ edit_3 }}
+    print("group number is: ", group_number)
+    
+    for section in processed_sections:
+        marks.append({section["total"]})  
+        for module in section["modules"]:  
+            marks.append({module["total"]})  
+
+            for question in module["questions"]:  
+                marks.append({question["mark"]}) 
+    
+    group_col = 1
+    row_num = 1
+    for col in marks_breakdown_sheet[row_num]:
+
+        if col.value == "Group " + str(group_number):
+
+            break
+        else:
+            group_col += 1
+
+    list_of_list_marks = [[list(d)[0]] for d in marks]
+    list_of_marks = [item[0] for item in list_of_list_marks]
+    print("Marks:", list_of_marks) 
+
+    for row_num, item in enumerate(list_of_marks, start=2):
+       marks_breakdown_sheet.cell(row=row_num, column=group_col, value=item)
+
+
+def question_mark_excel_student(workbook, processed_questions, processed_modules, processed_sections, student_number):
+   # print("QUrkESTION MARK EXCEL CALED")
+    marks_breakdown_sheet = workbook["Marks Breakdown"]
+
+    marks = []  # {{ edit_3 }}
+    print("student number is: ", student_number)
+    
+    for section in processed_sections:
+        marks.append({section["total"]})  
+        for module in section["modules"]:  
+            marks.append({module["total"]})  
+
+            for question in module["questions"]:  
+                marks.append({question["mark"]}) 
+    
+    student_col = 1
+    row_num = 1
+    for col in marks_breakdown_sheet[row_num]:
+        print(col.value)
+
+        if col.value == student_number:
+
+            break
+        else:
+            student_col += 1
+
+    list_of_list_marks = [[list(d)[0]] for d in marks]
+    list_of_marks = [item[0] for item in list_of_list_marks]
+    print("Marks:", list_of_marks) 
+
+    for row_num, item in enumerate(list_of_marks, start=2):
+       marks_breakdown_sheet.cell(row=row_num, column=student_col, value=item)
+
+
+""" def create_feedback_doc_download(student_infos, assignment_title, assignment, student_work):
+
+    doc = Document()
+    doc.add_heading(assignment_title, level=1)
+
+    # Skip the header row [0] and get the student info from row [1]
+    first_name = student_infos[1][0]  
+    last_name = student_infos[1][1]   
+    student_id = student_infos[1][2]  # Get the student ID from the third column
+    
+    # Create filename with student ID included
+    if assignment.is_group_assignment:
+        filename = f"Group_{student_work.group_number}_Student_Feedback.docx"
+    else:
+        filename = f"{first_name}_{last_name}_{student_id}_Student_Feedback.docx"
+    
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+
+    response['Content-Disposition'] = 'attachment; filename="feedback.docx"'
+
+    doc.save(response)
+
+    return response """
+ 
+    
+
+      
+
+ 
+
+         
+       

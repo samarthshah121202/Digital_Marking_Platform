@@ -288,6 +288,17 @@
         {% empty %}
         <p class="empty-message">No sections found.</p>
         {% endfor %} {% endif %}
+
+        <!-- Add the Finish button at the bottom -->
+        <div class="footer-actions" style="margin-top: 20px; text-align: center;">
+          <button
+            id="finishButtonBottom"
+            class="finish-button"
+            onclick="checkAndFinish()"
+          >
+            Finish
+          </button>
+        </div>
       </div>
     </div>
 

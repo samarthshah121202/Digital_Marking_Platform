@@ -112,6 +112,8 @@
     <div class="marks-container">
         <a href="{% url 'dashboard' %}" class="back-button">Back to Dashboard</a>
         <a href="{% url 'assignment_detail' assignment.id %}" class="back-button">Back to Assignment</a>
+        <a href="{% url 'download_feedback' %}" class="btn btn-primary">Download Feedback</a>
+
         
         <h1>{{ assignment.name }} - Marks Summary</h1>
         
@@ -152,5 +154,5 @@
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-</body>
+    
 </html> 

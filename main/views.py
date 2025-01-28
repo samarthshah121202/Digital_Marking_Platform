@@ -5,7 +5,7 @@ from django.contrib.auth.decorators import login_required
 from .models import Assignment, StudentWork, Section, StudentMark, Question, Feedback
 import os
 from .forms import AssignmentForm
-from .utils import add_to_feedback_sheet, handle_uploaded_file, handle_upload_excel_sheet, extract_student_info_from_pdf, create_feedback_doc
+from .utils import add_to_feedback_sheet, handle_uploaded_file, handle_upload_excel_sheet, extract_student_info_from_pdf, create_feedback_doc, question_mark_excel, question_mark_excel_student, create_feedback_doc_download
 from django.conf import settings
 import csv
 import logging
@@ -17,46 +17,49 @@ from django.db import transaction
 from django.templatetags.static import static
 from django.contrib import messages
 from openpyxl import Workbook, load_workbook
-
+from openpyxl.styles import Font, Alignment, PatternFill
 
 
 logger = logging.getLogger(__name__)
 
 markscheme_breakdown = []
 
-def create_assignment(request): # Function to handle the creation of a new assignment
-    if request.method == "POST": # Check if the request method is POST
-        form = AssignmentForm(request.POST, request.FILES) # Create a form instance with the POST data and files
-        logger.debug("Form data received: %s", form.data) # Log the form data
-        logger.debug("Files received: %s", request.FILES) # Log the files
+def create_assignment(request): 
+    if request.method == "POST": 
+        form = AssignmentForm(request.POST, request.FILES) 
+        logger.debug("Form data received: %s", form.data) 
+        logger.debug("Files received: %s", request.FILES) 
 
         if form.is_valid(): 
             try:
-                # Get the project name and create a user-specific folder for the project
-                project_name = form.cleaned_data["project_name"] # Get the project name from the form
-                project_folder = os.path.join(settings.MEDIA_ROOT, "assignments", request.user.username, project_name) # Create a path to the project folder
-                student_submissions_path = os.path.join(project_folder, "student_submissions")
-                student_feedback_doc_path =  os.path.join(project_folder, "student_feedback")
-                os.makedirs(student_submissions_path,exist_ok=True) # Create the project folder if it doesn't exist
-                os.makedirs(student_feedback_doc_path,exist_ok=True)
-
-                # Create an Assignment instance linked to the logged-in user
-                assignment = Assignment.objects.create(
-                    user=request.user, # Link the assignment to the logged-in user
-                    project_name=project_name, # Set the project name
-                    is_group_assignment=form.cleaned_data["is_group_assignment"]  # Store the group assignment status
-                )
                 student_num = []
                 group_num = []
-                # Save each student work file as a separate StudentWork instance
-                for index, file in enumerate(request.FILES.getlist('student_work')): # Iterate over each uploaded student work file
-                    # Save the student work file to the specific project folder
-                    student_work_path = os.path.join(student_submissions_path, f"student_work_{index}.pdf") # Create a path to the student work file
+                
+                project_name = form.cleaned_data["project_name"] 
+                project_folder = os.path.join(settings.MEDIA_ROOT, "assignments", request.user.username, project_name) 
+                student_submissions_path = os.path.join(project_folder, "student_submissions")
+                student_feedback_doc_path =  os.path.join(project_folder, "student_feedback")
+                os.makedirs(student_submissions_path,exist_ok=True) 
+                os.makedirs(student_feedback_doc_path,exist_ok=True)
+
+                
+                assignment = Assignment.objects.create(
+                    user=request.user,
+                    project_name=project_name, 
+                    is_group_assignment=form.cleaned_data["is_group_assignment"]  
+                )
+                
+                
+                for index, file in enumerate(request.FILES.getlist('student_work')): 
+                    
+                    student_work_path = os.path.join(student_submissions_path, f"student_work_{index}.pdf") 
                     handle_uploaded_file(file, student_work_path)
 
                     
+                    #g_num = read_group_number(student_work_path)  # Extract student information from the uploaded PDF
                     # Extract student information from the uploaded PDF using Tabula
-                    student_info = extract_student_info_from_pdf(student_work_path, is_group=form.cleaned_data["is_group_assignment"])  # Extract student information from the uploaded PDF
+                    student_info = extract_student_info_from_pdf(student_work_path, is_group=form.cleaned_data["is_group_assignment"])
+                    print("Is it group?:  ", form.cleaned_data["is_group_assignment"])
                     
                     #logger.info(f"file: {file}") # Log the file
                     
@@ -83,7 +86,8 @@ def create_assignment(request): # Function to handle the creation of a new assig
                             last_name=student['last_name'], # Set the last name
                             student_number=student['student_number'], # Set the student number
                             assignment=assignment, # Associate the student work with the created assignment
-                            group_number=student['group_number']  # Associate the student work with the created assignment
+
+                            group_number= student['group_number'] if form.cleaned_data["is_group_assignment"] else 1# Associate the student work with the created assignment
                         )
                         # Add the student work instance to the assignment
                         
@@ -105,6 +109,7 @@ def create_assignment(request): # Function to handle the creation of a new assig
                             for question in module.questions.all():
                                 markscheme_breakdown.append(question.question)
                 
+                print(markscheme_breakdown)
                 # Create and save the marks workbook
                 wb = Workbook()
                 
@@ -116,11 +121,11 @@ def create_assignment(request): # Function to handle the creation of a new assig
 
                 marks_breakdown_sheet = wb[sheet_names[0]]
                 marks_breakdown_sheet.cell(row=1, column=1, value="Mark Scheme")
-
-
                 
+                               
                 for row_num, item in enumerate(markscheme_breakdown, start=2):
                     marks_breakdown_sheet.cell(row=row_num, column=1, value=item)
+                    
 
                 col_num = 2
                 if assignment.is_group_assignment:
@@ -276,7 +281,7 @@ def view_markscheme(request, assignment_id, submission_id):
         student_work_path = static(path)
         
         # Debug prints
-        print(f"Student work path: {student_work_path}")
+       # print(f"Student work path: {student_work_path}")
         
         sections = Section.objects.prefetch_related(
             'modules',
@@ -437,6 +442,18 @@ def view_marks(request, assignment_id, submission_id):
             processed_sections.append(section_data)
             total_marks += section_total
         
+        marks_file_path = os.path.join(project_folder, "student_marks.xlsx")
+        wb = load_workbook(marks_file_path)
+        
+        if assignment.is_group_assignment:
+            question_mark_excel(wb, processed_questions, processed_modules, processed_sections, student_work.group_number)
+        else:
+            question_mark_excel_student(wb, processed_questions, processed_modules, processed_sections, student_work.student_number)
+
+
+        wb.save(marks_file_path)
+        wb.close()
+        #print("SAVED AND CLOSED)")
         # Modify the headers based on assignment type
         if assignment.is_group_assignment:
             student_info = [["First Name", "Last Name", "ID", "Group No."]]
@@ -465,7 +482,8 @@ def view_marks(request, assignment_id, submission_id):
 
 
         create_feedback_doc(student_info,processed_sections, assignment.project_name, student_feedback_doc_path, assignment, student_work)
-       
+       # create_feedback_doc_download(student_info,  assignment.project_name, assignment, student_work)
+
         if assignment.is_group_assignment:
             add_to_feedback_sheet(wb, id_table, group_table)
         else:
@@ -486,4 +504,5 @@ def view_marks(request, assignment_id, submission_id):
         return render(request, 'main/view_marks.html', {
             'error': 'Assignment not found'
         })
+    
     
