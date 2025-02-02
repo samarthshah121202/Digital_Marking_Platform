@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Download Student Marks Spreadsheet</title>
+
+    <style>
+      body {
+        font-family: 'Arial', sans-serif;
+        background-color: #f8f9fa;
+        color: #333;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+      }
+      .container {
+        text-align: center;
+        padding: 2rem;
+        border-radius: 12px;
+        background-color: white;
+        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+      }
+      a.download-btn,
+      a.back-btn {
+        display: inline-block;
+        background-color: #28a745;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 5px;
+        text-decoration: none;
+        font-size: 1rem;
+        font-weight: bold;
+        transition: background-color 0.3s;
+        margin-top: 1rem;
+      }
+      a.download-btn:hover {
+        background-color: #218838;
+      }
+      a.back-btn {
+        background-color: #6c757d;
+      }
+      a.back-btn:hover {
+        background-color: #5a6268;
+      }
+      h1 {
+        font-size: 1.8rem;
+        margin-bottom: 1rem;
+      }
+      p {
+        margin-bottom: 1.5rem;
+        color: #666;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Download Student Marks</h1>
+      <p>Click the button below to download the student marks as an Excel spreadsheet.</p>
+      <a href="{{ static_spreadsheet_path }}" download="file_name" class="download-btn">
+        Download Excel Spreadsheet
+      </a>
+      <br />
+      <a href="{% url 'dashboard' %}" class="back-button">Back to Dashboard</a>
+      </a>
+    </div>
+  </body>
+</html>

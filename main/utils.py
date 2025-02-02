@@ -14,6 +14,9 @@ from pypdf import PdfReader
 from openpyxl import load_workbook
 from operator import attrgetter
 from django.http import HttpResponse
+from django.shortcuts import render, get_object_or_404
+from django.urls import reverse, path 
+from django.http import Http404, FileResponse
 
 from main.models import Feedback, Module, Question, Section
 logger = logging.getLogger(__name__)
@@ -234,14 +237,8 @@ def create_feedback_doc(student_infos, sections, assignment_title, student_feedb
     # Ensure directory exists and save
     os.makedirs(os.path.dirname(full_path), exist_ok=True)
     doc.save(full_path)
-    #logger.info(f"Document saved successfully at: {full_path}")
-    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
 
-    response['Content-Disposition'] = 'attachment; filename="feedback.docx"'
-
-    doc.save(response)
-
-    return response
+    return full_path
 
 def add_to_feedback_sheet(workbook, id_table, group_table=None):
 
@@ -264,12 +261,13 @@ def add_to_feedback_sheet(workbook, id_table, group_table=None):
     
     #add_to_marks_breakdown()
     return 
+
+
 def question_mark_excel(workbook, processed_questions, processed_modules, processed_sections, group_number):
    # print("QUrkESTION MARK EXCEL CALED")
     marks_breakdown_sheet = workbook["Marks Breakdown"]
 
     marks = []  # {{ edit_3 }}
-    print("group number is: ", group_number)
     
     for section in processed_sections:
         marks.append({section["total"]})  
@@ -329,37 +327,6 @@ def question_mark_excel_student(workbook, processed_questions, processed_modules
 
     for row_num, item in enumerate(list_of_marks, start=2):
        marks_breakdown_sheet.cell(row=row_num, column=student_col, value=item)
-
-
-""" def create_feedback_doc_download(student_infos, assignment_title, assignment, student_work):
-
-    doc = Document()
-    doc.add_heading(assignment_title, level=1)
-
-    # Skip the header row [0] and get the student info from row [1]
-    first_name = student_infos[1][0]  
-    last_name = student_infos[1][1]   
-    student_id = student_infos[1][2]  # Get the student ID from the third column
-    
-    # Create filename with student ID included
-    if assignment.is_group_assignment:
-        filename = f"Group_{student_work.group_number}_Student_Feedback.docx"
-    else:
-        filename = f"{first_name}_{last_name}_{student_id}_Student_Feedback.docx"
-    
-    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
-
-    response['Content-Disposition'] = 'attachment; filename="feedback.docx"'
-
-    doc.save(response)
-
-    return response """
- 
-    
-
-      
-
- 
 
          
        

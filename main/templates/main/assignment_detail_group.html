@@ -26,7 +26,7 @@
                 <div
                   class="submission-header d-flex justify-content-between align-items-center"
                 >
-                  <h5 class="mb-0">Group {{ group.grouper }}</h5>
+                  <h5 class="mb-0"> Group {{ group.grouper }}</h5>
                   <small> </small>
 
                   {% if group.list.0.id %} {% if group.list.0.is_marked %}
@@ -68,6 +68,9 @@
               </div>
               {%endfor %} {% endif %} {% endif %}
               <a href="{% url 'dashboard' %}" class="btn btn-primary">Back to Dashboard</a>
+              {% if all_marked %}
+              <a href="{% url 'finish_assignment' assignment.id %}" class="btn btn-success">Finish</a>
+              {% endif %}
             </div>
           </div>
         </div>

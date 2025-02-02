@@ -112,9 +112,9 @@
     <div class="marks-container">
         <a href="{% url 'dashboard' %}" class="back-button">Back to Dashboard</a>
         <a href="{% url 'assignment_detail' assignment.id %}" class="back-button">Back to Assignment</a>
-        <a href="{% url 'download_feedback' %}" class="btn btn-primary">Download Feedback</a>
-
-        
+        {% comment %} <a href="">Download Feedback</a> {% endcomment %}
+        <a href="{{ feedback_doc_path }}" download="filename">Download Feedback Document</a>
+             
         <h1>{{ assignment.name }} - Marks Summary</h1>
         
         <div class="total-marks-summary">

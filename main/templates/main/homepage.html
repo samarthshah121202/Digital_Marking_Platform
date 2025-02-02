@@ -2,19 +2,39 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Marking Tool</title>
-    <!-- Include Bootstrap CSS -->
-    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Include Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Triodion&display=swap');
+        body {
+            font-family: 'Triodion', sans-serif;
+        }
+    </style>
 </head>
-<body>
-    <div class="container mt-5">
-        <div class="jumbotron text-center">
-            <h1 class="display-4">Welcome to the Marking Tool</h1>
-            <p class="lead">An efficient platform for educators to streamline grading and feedback.</p>
-            <hr class="my-4">
-            <p>Upload mark schemes, grade submissions, and provide structured feedback with ease.</p>
-            <a class="btn btn-primary btn-lg" href="{% url 'login' %}" role="button">Log In</a>
-            <a class="btn btn-success btn-lg" href="{% url 'register' %}" role="button">Register</a>
+<body class="bg-pastel-blue-50">
+    <div class="min-h-screen flex items-center justify-center py-12">
+        <div class="bg-white rounded-3xl shadow-xl p-10 max-w-4xl grid grid-cols-2 gap-6">
+            <!-- Left Section -->
+            <div class="flex flex-col justify-center bg-pastel-pink-100 text-gray-900 rounded-2xl p-8">
+                <h1 class="text-5xl font-extrabold mb-4">Marking Tool</h1>
+                <p class="text-lg mb-6">Streamline grading and feedback for educators with efficiency.</p>
+                <ul class="space-y-2 text-md">
+                    <li>&#x2705; Upload mark schemes</li>
+                    <li>&#x2705; Grade submissions</li>
+                    <li>&#x2705; Provide structured feedback</li>
+                </ul>
+            </div>
+            <!-- Right Section -->
+            <div class="flex flex-col justify-center text-center">
+                <h2 class="text-3xl font-semibold text-gray-800 mb-4">Get Started Now</h2>
+                <p class="text-gray-600 text-lg mb-8">Choose an option below to continue:</p>
+                <div class="space-y-4">
+                    <a href="{% url 'login' %}" class="bg-pastel-yellow-200 text-gray-900 py-3 px-6 w-full block rounded-md shadow-lg hover:bg-yellow-300 focus:ring-2 focus:ring-yellow-400 transition">Log In</a>
+                    <a href="{% url 'register' %}" class="bg-pastel-green-200 text-gray-900 py-3 px-6 w-full block rounded-md shadow-lg hover:bg-green-300 focus:ring-2 focus:ring-green-400 transition">Register</a>
+                </div>
+            </div>
         </div>
     </div>
 </body>

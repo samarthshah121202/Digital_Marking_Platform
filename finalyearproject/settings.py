@@ -147,3 +147,18 @@ LOGIN_REDIRECT_URL = 'dashboard'
 LOGOUT_REDIRECT_URL = '/'
 
 # Media files configuration
+from loginsights.main import LogInsightsLogger
+
+# Configuration variables (replace with your own details)
+connection_string = "https://insightsfyp.queue.core.windows.net/messages?sv=2024-11-04&se=2026-02-02T17%3A19%3A39Z&sp=a&sig=HLdYQTb1R7jfV8J79t3qG%2FrSWOaZ0CQK0p46xk0ima4%3D"  # Replace with your connection string
+client_application_id = 7  # Replace with the given client application id
+secret = "X2oDWpC701b5bG2YxU1BujKdXB7BdsvSGKFEzJh52oHEl7sjzJN2r4kyrLpUsBdHFJyRByjox5JFbG2aTXMUe3kMjQWoeMM1L98bIbhAjjEvvfXkSOBUzInLimsub5Kk"  # Replace with the given secret
+
+config = {
+    "ConnectionString": connection_string,
+    "ClientApplicationId": client_application_id,
+    "Secret": secret
+}
+
+# Configure the logger
+LogInsightsLogger.configure(config)

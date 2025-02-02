@@ -5,10 +5,9 @@ from django.contrib.auth.decorators import login_required
 from .models import Assignment, StudentWork, Section, StudentMark, Question, Feedback
 import os
 from .forms import AssignmentForm
-from .utils import add_to_feedback_sheet, handle_uploaded_file, handle_upload_excel_sheet, extract_student_info_from_pdf, create_feedback_doc, question_mark_excel, question_mark_excel_student, create_feedback_doc_download
+from .utils import add_to_feedback_sheet, handle_uploaded_file, handle_upload_excel_sheet, extract_student_info_from_pdf, create_feedback_doc, question_mark_excel, question_mark_excel_student
 from django.conf import settings
 import csv
-import logging
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.db.models import Prefetch
@@ -17,18 +16,32 @@ from django.db import transaction
 from django.templatetags.static import static
 from django.contrib import messages
 from openpyxl import Workbook, load_workbook
-from openpyxl.styles import Font, Alignment, PatternFill
+from openpyxl.styles import Font, Border, Side, PatternFill
+from django.http import FileResponse
+from django.shortcuts import render, get_object_or_404
+from django.urls import reverse, path 
+from django.http import Http404, FileResponse
+from loginsights.main import LogInsightsLogger
 
+from django.http import HttpResponse, FileResponse
 
-logger = logging.getLogger(__name__)
+logger = LogInsightsLogger.get_logger()  
 
 markscheme_breakdown = []
+filepath_feedback = ""
+
+def get_spreadsheet_name(request, project_name):
+    logger.info(f"User {request.user.username} is getting spreadsheet name for project: {project_name}")  # Log for username
+    file_name = str(project_name) + "_student_marks.xlsx"
+    project_folder = os.path.join(settings.MEDIA_ROOT, "assignments", request.user.username, project_name) 
+    return os.path.join(project_folder, file_name)
 
 def create_assignment(request): 
+    logger.info(f"User {request.user.username} is attempting to create an assignment.")  # Log for username
     if request.method == "POST": 
         form = AssignmentForm(request.POST, request.FILES) 
-        logger.debug("Form data received: %s", form.data) 
-        logger.debug("Files received: %s", request.FILES) 
+        logger.debug(f"Form data received: {form.data}") 
+        logger.debug(f"Files received: {request.FILES}") 
 
         if form.is_valid(): 
             try:
@@ -59,7 +72,7 @@ def create_assignment(request):
                     #g_num = read_group_number(student_work_path)  # Extract student information from the uploaded PDF
                     # Extract student information from the uploaded PDF using Tabula
                     student_info = extract_student_info_from_pdf(student_work_path, is_group=form.cleaned_data["is_group_assignment"])
-                    print("Is it group?:  ", form.cleaned_data["is_group_assignment"])
+                    #]print("Is it group?:  ", form.cleaned_data["is_group_assignment"])
                     
                     #logger.info(f"file: {file}") # Log the file
                     
@@ -121,11 +134,9 @@ def create_assignment(request):
 
                 marks_breakdown_sheet = wb[sheet_names[0]]
                 marks_breakdown_sheet.cell(row=1, column=1, value="Mark Scheme")
-                
                                
                 for row_num, item in enumerate(markscheme_breakdown, start=2):
                     marks_breakdown_sheet.cell(row=row_num, column=1, value=item)
-                    
 
                 col_num = 2
                 if assignment.is_group_assignment:
@@ -136,33 +147,31 @@ def create_assignment(request):
                 else:
                     for col_num, item in enumerate(student_num, start=2):
                         marks_breakdown_sheet.cell(row=1, column=col_num, value=item)
-                    
-
+                
                 id_sheet = wb[sheet_names[1]]
                 headers = ["Student Id", "Student Name", "Mark"]
                 for col_num, header in enumerate(headers, start=1):
                     id_sheet.cell(row=1, column=col_num, value=header)
-                
-               
 
                 # Save the workbook in the project folder
-                marks_file_path = os.path.join(project_folder, "student_marks.xlsx")
+                marks_file_path = os.path.join(project_folder, str(project_name) + "_student_marks.xlsx")
                 wb.save(marks_file_path)
 
                 # Save the assignment instance after creating student works and handling files
                 assignment.save()
 
-                logger.debug("Files uploaded and processed successfully!")
+                logger.info(f"User {request.user.username} successfully created assignment: {assignment.id}")  # Log successful creation
+                logger.add_metric('assignment_created', {'username': request.user.username, 'assignment_id': assignment.id})  # Log metric
                 return redirect('assignment_detail', assignment_id=assignment.id)  # Redirect to the dashboard or any appropriate page
 
             except Exception as e:
-                logger.error("Error during file upload and processing: %s", str(e)) # Log the error
+                logger.error(f"Error during file upload and processing for user {request.user.username}: {str(e)}")  
                 return render(request, 'main/create_assignment.html', { # Render the create assignment template
                     'form': form, # Pass the form to the template
                     'error': f"Error uploading files: {str(e)}"
                 })
         else:
-            logger.error("Form validation errors: %s", form.errors) #
+            logger.info(f"Form validation errors for user {request.user.username}: {form.errors}")  
             return render(request, 'main/create_assignment.html', {
                 'form': form,
                 'error': "Form validation failed. Please check your inputs."
@@ -172,6 +181,7 @@ def create_assignment(request):
     return render(request, 'main/create_assignment.html', {'form': form})
 
 def homepage(request):
+    logger.info(f"User {request.user.username} accessed the homepage.")  # Log for username
     return render(request, 'main/homepage.html')
 
 def register(request):
@@ -187,6 +197,7 @@ def register(request):
         # Create a new user if the username is unique
         user = User.objects.create_user(username=username, password=password)
         login(request, user)
+        logger.info(f"User {request.user.username} registered successfully.")  # Log successful registration
         return redirect('dashboard')
     
     return render(request, 'main/register.html')
@@ -197,18 +208,19 @@ def login_view(request):
         password = request.POST['password']
         user = authenticate(request, username=username, password=password)
         if user:
+            logger.info(f"User {username} logged in successfully.")  # Log successful login
             login(request, user)
             return redirect('dashboard')
     return render(request, 'main/login.html')
 
 def logout_view(request):
-    # Log out the user
+    logger.info(f"User {request.user.username} logged out.")  # Log for username
     logout(request)
-    # Redirect to the homepage or login page after logout
     return redirect('homepage')
 
 @login_required
-def dashboard(request):
+def dashboard(request): 
+    logger.info(f"User {request.user.username} accessed the dashboard.")  # Log for username
     # Filter assignments for the currently logged-in user
     assignments = Assignment.objects.filter(user=request.user)
 
@@ -220,6 +232,7 @@ def dashboard(request):
 
 @login_required
 def assignment_detail(request, assignment_id):
+    logger.info(f"User {request.user.username} is viewing assignment details for assignment ID: {assignment_id}")  # Log for username
     assignment = Assignment.objects.get(id=assignment_id)
     student_info = StudentWork.objects.filter(assignment=assignment).values(
         'first_name',
@@ -230,20 +243,32 @@ def assignment_detail(request, assignment_id):
         "is_marked"
     )
 
+    all_marked = all(student['is_marked'] for student in student_info)
+
+    print(f"All submissions marked: {all_marked}")  
 
     context = {
         'assignment': assignment,
-        'student_info': student_info
+        'student_info': student_info,
+        'all_marked': all_marked
     }
 
     if assignment.is_group_assignment:
        return render(request, 'main/assignment_detail_group.html', context) 
 
     return render(request, 'main/assignment_detail_individual.html', context) 
+    
+
+
+
+
+
+
 
 
 @login_required
 def delete_assignment(request, assignment_id):
+    logger.info(f"User {request.user.username} is attempting to delete assignment: {assignment_id}")  # Log for username
     try:
         # Get the assignment and verify ownership
         assignment = get_object_or_404(Assignment, id=assignment_id, user=request.user)
@@ -261,6 +286,8 @@ def delete_assignment(request, assignment_id):
             shutil.rmtree(project_folder)
         
         messages.success(request, 'Assignment deleted successfully')
+        logger.info(f"User {request.user.username} successfully deleted assignment: {assignment_id}")  # Log successful deletion
+        logger.add_metric('assignment_deleted', {'username': request.user.username, 'assignment_id': assignment_id})  # Log metric
         return redirect('dashboard')
     except Assignment.DoesNotExist:
         messages.error(request, 'Assignment not found')
@@ -272,6 +299,7 @@ def delete_assignment(request, assignment_id):
 
 @login_required
 def view_markscheme(request, assignment_id, submission_id):
+    logger.info(f"User {request.user.username} is viewing markscheme for assignment ID: {assignment_id}, submission ID: {submission_id}")  # Log for username
     try:
         assignment = Assignment.objects.get(id=assignment_id)
         # Get the specific student work
@@ -303,7 +331,7 @@ def view_markscheme(request, assignment_id, submission_id):
 @login_required
 @require_POST
 def save_marks(request):
-
+    logger.info(f"User {request.user.username} is saving marks.")  # Log for username
     def get_students(is_group_project, submission_id):
         if is_group_project:
             first_student_in_group = StudentWork.objects.get(id=submission_id)
@@ -374,6 +402,7 @@ def save_marks(request):
 
 @login_required
 def view_marks(request, assignment_id, submission_id):
+    logger.info(f"User {request.user.username} is viewing marks for assignment ID: {assignment_id}, submission ID: {submission_id}")  # Log for username
     try:
         assignment = Assignment.objects.get(id=assignment_id)
 
@@ -384,7 +413,7 @@ def view_marks(request, assignment_id, submission_id):
         student_work = assignment.student_works.get(id=submission_id)
 
         if not isinstance(student_work, StudentWork):
-            logger.error(f"Invalid student_work fetched: {student_work}")
+            logger.info(f"Invalid student_work fetched: {student_work}")
         else:
             #logger.info(f"Fetched StudentWork: {student_work} {student_work.first_name} {student_work.last_name}")
 
@@ -442,7 +471,7 @@ def view_marks(request, assignment_id, submission_id):
             processed_sections.append(section_data)
             total_marks += section_total
         
-        marks_file_path = os.path.join(project_folder, "student_marks.xlsx")
+        marks_file_path = os.path.join(project_folder, str(project_name) + "_student_marks.xlsx")
         wb = load_workbook(marks_file_path)
         
         if assignment.is_group_assignment:
@@ -477,13 +506,13 @@ def view_marks(request, assignment_id, submission_id):
             student_info.append([tmp.first_name, tmp.last_name, tmp.student_number])
             id_table = [[tmp.student_number, tmp.first_name + " " + tmp.last_name, total_marks]]
 
-        marks_file_path = os.path.join(project_folder, "student_marks.xlsx")
+        marks_file_path = os.path.join(project_folder, str(project_name) + "_student_marks.xlsx")
         wb = load_workbook(marks_file_path)
 
 
-        create_feedback_doc(student_info,processed_sections, assignment.project_name, student_feedback_doc_path, assignment, student_work)
-       # create_feedback_doc_download(student_info,  assignment.project_name, assignment, student_work)
-
+        feedback_doc_path = static(create_feedback_doc(student_info,processed_sections, assignment.project_name, student_feedback_doc_path, assignment, student_work).removeprefix("assignments"))
+        logger.info(f"Feedback path = {feedback_doc_path}")
+        
         if assignment.is_group_assignment:
             add_to_feedback_sheet(wb, id_table, group_table)
         else:
@@ -493,16 +522,36 @@ def view_marks(request, assignment_id, submission_id):
         wb.save(marks_file_path)
         wb.close()
 
+     
+
         return render(request, 'main/view_marks.html', {
             'assignment': assignment,
             'processed_sections': processed_sections,
             'total_marks': total_marks,
-            'submission_id': student_work.id
-        })
+            'submission_id': student_work.id,
+            'feedback_doc_path':feedback_doc_path
+            })
         
     except Assignment.DoesNotExist:
         return render(request, 'main/view_marks.html', {
             'error': 'Assignment not found'
         })
+
+
+def finish_assignment(request, assignment_id):
+    logger.info(f"User {request.user.username} is finishing assignment ID: {assignment_id}")  # Log for username
+    # Logic for finishing the assignment (e.g., marking it as complete)
+    assignment = get_object_or_404(Assignment, id=assignment_id, user=request.user)
     
-    
+    spreadsheet_path = get_spreadsheet_name(request=request, project_name=assignment.project_name)
+    if spreadsheet_path and spreadsheet_path.startswith("assignments"):
+        spreadsheet_path = spreadsheet_path.removeprefix("assignments")
+
+    static_spreadsheet_path = static(spreadsheet_path)
+    print(static_spreadsheet_path)
+
+
+    return render(request, 'main/finish_assignment.html', {
+        'assignment': assignment,
+        'static_spreadsheet_path': static_spreadsheet_path
+    })
