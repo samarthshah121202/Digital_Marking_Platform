@@ -22,7 +22,7 @@ from django.shortcuts import render, get_object_or_404
 from django.urls import reverse, path 
 from django.http import Http404, FileResponse
 from loginsights.main import LogInsightsLogger
-
+import re
 from django.http import HttpResponse, FileResponse
 
 logger = LogInsightsLogger.get_logger()  
@@ -133,10 +133,17 @@ def create_assignment(request):
                 wb.remove(wb.worksheets[-1])
 
                 marks_breakdown_sheet = wb[sheet_names[0]]
-                marks_breakdown_sheet.cell(row=1, column=1, value="Mark Scheme")
+                marks_breakdown_sheet.cell(row=1, column=1, value="Criteria")
                                
                 for row_num, item in enumerate(markscheme_breakdown, start=2):
                     marks_breakdown_sheet.cell(row=row_num, column=1, value=item)
+
+                row_total = marks_breakdown_sheet.max_row + 1  # Insert total row after the last data row
+                marks_breakdown_sheet.cell(row=row_total, column=1, value="Total")  # Add "Total" in column A
+
+
+                row_grade = marks_breakdown_sheet.max_row + 1  # Insert total row after the last data row
+                marks_breakdown_sheet.cell(row=row_grade, column=1, value="Provisional Grade")  # Add "Total" in column A
 
                 col_num = 2
                 if assignment.is_group_assignment:
@@ -258,14 +265,6 @@ def assignment_detail(request, assignment_id):
 
     return render(request, 'main/assignment_detail_individual.html', context) 
     
-
-
-
-
-
-
-
-
 @login_required
 def delete_assignment(request, assignment_id):
     logger.info(f"User {request.user.username} is attempting to delete assignment: {assignment_id}")  # Log for username
@@ -427,7 +426,8 @@ def view_marks(request, assignment_id, submission_id):
             modules__questions__studentmark__student=student_work
         ).distinct()
 
-
+        # Now let's print the data for each section, module, question, feedback, and student mark
+      
         # Process the data to include marks
         processed_sections = []
         total_marks = 0
@@ -470,14 +470,41 @@ def view_marks(request, assignment_id, submission_id):
             # logger.info(f"section data {section_data}")
             processed_sections.append(section_data)
             total_marks += section_total
-        
+
+        feedback_above_50 = []
+        feedback_below_50 = []
+
+        for section in processed_sections:
+            for module in section['modules']:
+                for question in module['questions']:
+                    mark = question['mark']
+                    feedback_text = question['feedback_text']
+                    
+                    question_text = str(question)
+                    match = re.search(r'\((\d+) marks\)', question_text)
+
+                    if match:
+                        max_marks = float(match.group(1))  
+
+                    if max_marks is not None:
+                        if mark >= 0.5 * max_marks:
+                            feedback_above_50.append(feedback_text)
+                        else:
+                            feedback_below_50.append(feedback_text)
+                    else:
+                        print(f"Skipping question due to missing max_marks: {question['question']}")
+
+        print("THIS IS MARKS ABOVE 50%", feedback_above_50)
+        print("THIS IS MARKS BELOW 50%", feedback_below_50)
+
+
         marks_file_path = os.path.join(project_folder, str(project_name) + "_student_marks.xlsx")
         wb = load_workbook(marks_file_path)
         
         if assignment.is_group_assignment:
-            question_mark_excel(wb, processed_questions, processed_modules, processed_sections, student_work.group_number)
+            question_mark_excel(wb, processed_questions, processed_modules, processed_sections, student_work.group_number, total_marks)
         else:
-            question_mark_excel_student(wb, processed_questions, processed_modules, processed_sections, student_work.student_number)
+            question_mark_excel_student(wb, processed_questions, processed_modules, processed_sections, student_work.student_number, total_marks)
 
 
         wb.save(marks_file_path)
@@ -510,7 +537,7 @@ def view_marks(request, assignment_id, submission_id):
         wb = load_workbook(marks_file_path)
 
 
-        feedback_doc_path = static(create_feedback_doc(student_info,processed_sections, assignment.project_name, student_feedback_doc_path, assignment, student_work).removeprefix("assignments"))
+        feedback_doc_path = static(create_feedback_doc(student_info,processed_sections, assignment.project_name, student_feedback_doc_path, assignment, student_work, feedback_above_50, feedback_below_50).removeprefix("assignments"))
         logger.info(f"Feedback path = {feedback_doc_path}")
         
         if assignment.is_group_assignment:

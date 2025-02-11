@@ -17,6 +17,22 @@ from django.http import HttpResponse
 from django.shortcuts import render, get_object_or_404
 from django.urls import reverse, path 
 from django.http import Http404, FileResponse
+from docx import Document
+from docx.enum.section import WD_ORIENT
+from docx.shared import Inches
+import os
+from docx import Document
+from docx.shared import Inches, RGBColor, Pt
+from docx.enum.section import WD_ORIENT
+from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+from docx.oxml import parse_xml
+from docx.oxml.ns import nsdecls
+import os
+from openpyxl.utils import get_column_letter
+from openpyxl.styles import Font, PatternFill, Border, Side
+
+
+
 
 from main.models import Feedback, Module, Question, Section
 logger = logging.getLogger(__name__)
@@ -192,49 +208,148 @@ def handle_upload_excel_sheet(filePath, save_folder, filename, assignment) -> li
 
     return markscheme_obj
 
-def create_feedback_doc(student_infos, sections, assignment_title, student_feedback_doc_path, assignment, student_work):
-
+def create_feedback_doc(student_infos, sections, assignment_title, student_feedback_doc_path, assignment, student_work, feedback_above_50, feedback_below_50):
     doc = Document()
-    doc.add_heading(assignment_title, level=1)
 
-    # Skip the header row [0] and get the student info from row [1]
-    first_name = student_infos[1][0]  
-    last_name = student_infos[1][1]   
-    student_id = student_infos[1][2]  # Get the student ID from the third column
-    
-    # Create filename with student ID included
+    # Set the document orientation to landscape
+    section = doc.sections[0]
+    section.orientation = WD_ORIENT.LANDSCAPE
+    new_width, new_height = section.page_height, section.page_width
+    section.page_width = new_width
+    section.page_height = new_height
+    section.left_margin = Inches(0.5)
+    section.right_margin = Inches(0.5)
+
+    # Modify title to include "- Assignment Feedback" and apply formatting
+    title_text = f"{assignment_title} - Assignment Feedback"
+    title_paragraph = doc.add_heading(level=1)
+    title_run = title_paragraph.add_run(title_text)
+    title_run.bold = True
+    title_run.font.color.rgb = RGBColor(0, 0, 0)  # Black color
+    title_paragraph.alignment = 1  # Center alignment
+
+    # Add feedback summary table (different format for group vs individual assignments)
+    if assignment.is_group_assignment:
+        # Group assignment: 3-column table with group number
+        feedback_table = doc.add_table(rows=1, cols=3)
+        feedback_table.style = 'Table Grid'
+        feedback_table.cell(0, 0).text = f"Group Number: {student_work.group_number}"
+        feedback_table.cell(0, 1).text = "Strengths of the Report"
+        feedback_table.cell(0, 2).text = "Areas that Need Improving"
+
+        # Apply colors to relevant columns
+        feedback_table.cell(0, 1)._element.get_or_add_tcPr().append(parse_xml(r'<w:shd {} w:fill="C6E0B4"/>'.format(nsdecls('w'))))  # Pastel Green
+        feedback_table.cell(0, 2)._element.get_or_add_tcPr().append(parse_xml(r'<w:shd {} w:fill="FFF2CC"/>'.format(nsdecls('w'))))  # Pastel Yellow
+    else:
+        # Individual assignment: 2-column table without group number
+        feedback_table = doc.add_table(rows=1, cols=2)
+        feedback_table.style = 'Table Grid'
+        feedback_table.cell(0, 0).text = "Strengths of the Report"
+        feedback_table.cell(0, 1).text = "Areas that Need Improving"
+
+        # Apply colors to relevant columns
+        feedback_table.cell(0, 0)._element.get_or_add_tcPr().append(parse_xml(r'<w:shd {} w:fill="C6E0B4"/>'.format(nsdecls('w'))))  # Pastel Green
+        feedback_table.cell(0, 1)._element.get_or_add_tcPr().append(parse_xml(r'<w:shd {} w:fill="FFF2CC"/>'.format(nsdecls('w'))))  # Pastel Yellow
+
+    # Add some space between the feedback summary table and the student info table
+    doc.add_paragraph()
+
+    # Determine the number of columns for the student table
+    num_cols = len(student_infos[0]) - (1 if assignment.is_group_assignment else 0)
+
+    # Create and populate the student information table
+    student_table = doc.add_table(rows=len(student_infos), cols=num_cols)
+    student_table.style = 'Table Grid'
+
+    # Populate the table with student info
+    for row_idx, row_data in enumerate(student_infos):
+        for col_idx in range(num_cols):
+            student_table.cell(row_idx, col_idx).text = str(row_data[col_idx])
+
+    # Add a blank paragraph to separate the student information table from the feedback table
+    doc.add_paragraph()
+
+    # Create feedback table with a single column
+    feedback_table = doc.add_table(rows=0, cols=1)
+    feedback_table.style = 'Table Grid'
+
+    # Populate the feedback table
+    for section in sections:
+        section_name = section["section"].section_name
+
+        # Add row for section name
+        section_row = feedback_table.add_row().cells
+        section_row[0].text = section_name
+
+        for module in section["modules"]:
+            module_name = module["module"].module_name
+
+            # Add row for module name (topic)
+            module_row = feedback_table.add_row().cells
+            module_row[0].text = module_name
+
+        
+            feedback_above_list = []
+            feedback_below_list = []
+
+        # Process each question in the module
+            for question in module["questions"]:
+                feedback_text = question["feedback_text"]
+
+            # Categorize feedback
+                if feedback_text in feedback_above_50:
+                    feedback_above_list.append(feedback_text)
+                elif feedback_text in feedback_below_50:
+                    feedback_below_list.append(feedback_text)
+
+        # Append feedback rows for the module
+            if feedback_above_list:
+                feedback_above_row = feedback_table.add_row().cells
+                feedback_above_row[0].text = "\n".join(feedback_above_list)
+                feedback_above_row[0]._element.get_or_add_tcPr().append(parse_xml(r'<w:shd {} w:fill="C6E0B4"/>'.format(nsdecls('w'))))
+
+
+            if feedback_below_list:
+                feedback_below_row = feedback_table.add_row().cells
+                feedback_below_row[0].text = "\n".join(feedback_below_list)
+                feedback_below_row[0]._element.get_or_add_tcPr().append(parse_xml(r'<w:shd {} w:fill="FFF2CC"/>'.format(nsdecls('w'))))
+
+
+
+
+
+    for row_index, row in enumerate(feedback_table.rows):
+        for cell in row.cells:
+            if "Part" in cell.text:
+                cell._element.get_or_add_tcPr().append(parse_xml(r'<w:shd {} w:fill="AEC6CF"/>'.format(nsdecls('w'))))
+                # Format text: Center, Bold, and Larger Font
+                paragraph = cell.paragraphs[0]
+                paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER  # Center text
+                
+                run = paragraph.runs[0]
+                run.bold = True  # Make text bold
+                run.font.size = Pt(12)  # Increase font size
+                break  # Stop checking this row after the first match
+
+    for row_index, row in enumerate(feedback_table.rows):
+        for cell in row.cells:
+            if "Topic" in cell.text:            
+                paragraph = cell.paragraphs[0]
+                run = paragraph.runs[0]
+                run.bold = True
+                break
+
+    # Define full path and ensure directory exists
+    first_name = student_infos[1][0]
+    last_name = student_infos[1][1]
+    student_id = student_infos[1][2]
+
     if assignment.is_group_assignment:
         filename = f"Group_{student_work.group_number}_Student_Feedback.docx"
     else:
         filename = f"{first_name}_{last_name}_{student_id}_Student_Feedback.docx"
+
     full_path = os.path.join(student_feedback_doc_path, filename)
-
-    # Create and populate student info table
-    student_table = doc.add_table(rows=len(student_infos), cols=len(student_infos[0]))
-    student_table.style = 'Table Grid'
-
-    # Populate the table with data
-    for row_idx, row_data in enumerate(student_infos):
-        for col_idx, cell_data in enumerate(row_data):
-            student_table.cell(row_idx, col_idx).text = str(cell_data)
-
-    # Add sections, modules, and feedback
-    for section in sections:
-        doc.add_heading(section["section"].section_name, level=2)
-
-        for module in section["modules"]:
-            doc.add_heading(module["module"].module_name, level=4)
-
-            for question in module["questions"]:
-                feedback_paragraph = doc.add_paragraph()
-                feedback_text = question["feedback_text"]
-                
-                # Add text with appropriate styling
-                feedback_run = feedback_paragraph.add_run(feedback_text)
-                feedback_run.font.color.rgb = RGBColor(0, 128, 0)  # Green color
-                feedback_paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
-
-    # Ensure directory exists and save
     os.makedirs(os.path.dirname(full_path), exist_ok=True)
     doc.save(full_path)
 
@@ -243,7 +358,7 @@ def create_feedback_doc(student_infos, sections, assignment_title, student_feedb
 def add_to_feedback_sheet(workbook, id_table, group_table=None):
 
     def add_table(table, sheet_name, add_line=False):
-      #  print(table)
+        print("THIS IS THE TABLE", table)
         sheet = workbook[sheet_name]
         if add_line is True:
             table.append([" "])
@@ -252,6 +367,28 @@ def add_to_feedback_sheet(workbook, id_table, group_table=None):
             for col_num, cell in enumerate(row_data, start=1):
                 #logger.info(f"row={new_row} col={col_num} cell_data={cell} max_row={sheet.max_row}")
                 sheet.cell(row=new_row, column=col_num).value = cell
+
+        for col in range(1, sheet.max_column + 1):  # Starting from column 2
+            col_letter = get_column_letter(col)
+            sheet.column_dimensions[col_letter].width = 20  # Adjust width as needed
+
+    # Adjust row heights - Set height for all rows
+        for row in range(1, sheet.max_row + 1):
+            sheet.row_dimensions[row].height = 20  #
+
+
+        thin_border = Border(
+        top=Side(style='thin'),
+        bottom=Side(style='thin'),
+        left=Side(style='thin'),
+        right=Side(style='thin')
+    )
+    
+        for row in range(1, sheet.max_row + 1):
+            for col in range(1, sheet.max_column + 1):
+                cell = sheet.cell(row=row, column=col)
+                if cell.value is not None:  # Only apply borders to cells with data
+                    cell.border = thin_border        
 
     add_table(id_table, "Id List")
     
@@ -263,9 +400,33 @@ def add_to_feedback_sheet(workbook, id_table, group_table=None):
     return 
 
 
-def question_mark_excel(workbook, processed_questions, processed_modules, processed_sections, group_number):
+def question_mark_excel(workbook, processed_questions, processed_modules, processed_sections, group_number, total_marks):
    # print("QUrkESTION MARK EXCEL CALED")
+    
     marks_breakdown_sheet = workbook["Marks Breakdown"]
+
+    # Adjust column widths
+    # Set a larger width for column 1 (e.g., 30)
+    marks_breakdown_sheet.column_dimensions["A"].width = 50  # Column 1 is "A"
+
+    # Set width for other columns (e.g., 15 for columns 2, 3, etc.)
+    for col in range(2, marks_breakdown_sheet.max_column + 1):  # Starting from column 2
+        col_letter = get_column_letter(col)
+        marks_breakdown_sheet.column_dimensions[col_letter].width = 15  # Adjust width as needed
+
+    # Adjust row heights - Set height for all rows
+    for row in range(1, marks_breakdown_sheet.max_row + 1):
+        marks_breakdown_sheet.row_dimensions[row].height = 20  # Adjust height as neede
+
+    bold_font = Font(bold=True)
+    
+    # Make all cells in row 1 bold
+    for col in range(1, marks_breakdown_sheet.max_column + 1):
+        marks_breakdown_sheet.cell(row=1, column=col).font = bold_font
+    
+    # Make all cells in column 1 bold
+    for row in range(1, marks_breakdown_sheet.max_row + 1):
+        marks_breakdown_sheet.cell(row=row, column=1).font = bold_font
 
     marks = []  # {{ edit_3 }}
     
@@ -294,13 +455,103 @@ def question_mark_excel(workbook, processed_questions, processed_modules, proces
     for row_num, item in enumerate(list_of_marks, start=2):
        marks_breakdown_sheet.cell(row=row_num, column=group_col, value=item)
 
+    pastel_yellow_fill = PatternFill(start_color="FFCC00", end_color="FFCC00", fill_type="solid")  # Pastel yellow color
+    pastel_green_fill = PatternFill(start_color="66CC66", end_color="66CC66", fill_type="solid")  # Pastel green color
+    light_blue_fill = PatternFill(start_color="ADD8E6", end_color="ADD8E6", fill_type="solid")  # Light Blue
+    light_grey_fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")  # Light Grey
 
-def question_mark_excel_student(workbook, processed_questions, processed_modules, processed_sections, student_number):
+
+    for row in range(1, marks_breakdown_sheet.max_row + 1):
+        cell_value = marks_breakdown_sheet.cell(row=row, column=1).value
+        if cell_value and "part" in str(cell_value).lower():  # Case-insensitive check for "part"
+            # Fill the entire row with pastel yellow color
+            for col in range(1, marks_breakdown_sheet.max_column + 1):  # Loop through all columns in the row
+                marks_breakdown_sheet.cell(row=row, column=col).fill = pastel_yellow_fill
+
+        elif "topic" in str(cell_value).lower():
+                print(f"Found 'topic' in row {row}, column A: {cell_value}")  # Print the row and value
+                # Fill the entire row with pastel green color
+                for col in range(1, marks_breakdown_sheet.max_column + 1):
+                    marks_breakdown_sheet.cell(row=row, column=col).fill = pastel_green_fill
+
+    color_toggle = True  # This will toggle between True (Light Blue) and False (Light Grey)
+    for row in range(1, marks_breakdown_sheet.max_row + 1):
+        cell_value = marks_breakdown_sheet.cell(row=row, column=1).value
+        if cell_value and "question" in str(cell_value).lower():
+            #rint(f"Found 'question' in row {row}, column 1: {cell_value}")
+
+            # Decide which fill color to use (Light Blue or Light Grey)
+            if color_toggle:
+                fill_color = light_blue_fill
+                color_toggle = False  # Toggle to next color (Light Grey)
+            else:
+                fill_color = light_grey_fill
+                color_toggle = True  # Toggle to next color (Light Blue)
+
+            # Apply the chosen fill color and border to the cell
+            for col in range(1, marks_breakdown_sheet.max_column + 1):
+                cell = marks_breakdown_sheet.cell(row=row, column=col)
+                cell.fill = fill_color
+
+    group_col = None
+    for idx, col in enumerate(marks_breakdown_sheet[1], start=1):  # Start at column index 1
+        if col.value == "Group " + str(group_number):
+            group_col = idx
+            break
+
+    total_row = None
+    for row in range(1, marks_breakdown_sheet.max_row + 1):
+        if marks_breakdown_sheet.cell(row=row, column=1).value == "Total":
+            total_row = row
+            break
+
+    marks_breakdown_sheet.cell(row=total_row, column=group_col, value=total_marks)
+    
+
+    thin_border = Border(
+        top=Side(style='thin'),
+        bottom=Side(style='thin'),
+        left=Side(style='thin'),
+        right=Side(style='thin')
+    )
+    
+    for row in range(1, marks_breakdown_sheet.max_row + 1):
+        for col in range(1, marks_breakdown_sheet.max_column + 1):
+            cell = marks_breakdown_sheet.cell(row=row, column=col)
+            if cell.value is not None:  # Only apply borders to cells with data
+                cell.border = thin_border
+                
+    total_marks = 0
+
+
+def question_mark_excel_student(workbook, processed_questions, processed_modules, processed_sections, student_number, total_marks):
    # print("QUrkESTION MARK EXCEL CALED")
     marks_breakdown_sheet = workbook["Marks Breakdown"]
+     # Adjust column widths
+    # Set a larger width for column 1 (e.g., 30)
+    marks_breakdown_sheet.column_dimensions["A"].width = 50  # Column 1 is "A"
+
+    # Set width for other columns (e.g., 15 for columns 2, 3, etc.)
+    for col in range(2, marks_breakdown_sheet.max_column + 1):  # Starting from column 2
+        col_letter = get_column_letter(col)
+        marks_breakdown_sheet.column_dimensions[col_letter].width = 15  # Adjust width as needed
+
+    # Adjust row heights - Set height for all rows
+    for row in range(1, marks_breakdown_sheet.max_row + 1):
+        marks_breakdown_sheet.row_dimensions[row].height = 20  # Adjust height as neede
+
+    bold_font = Font(bold=True)
+    
+    # Make all cells in row 1 bold
+    for col in range(1, marks_breakdown_sheet.max_column + 1):
+        marks_breakdown_sheet.cell(row=1, column=col).font = bold_font
+    
+    # Make all cells in column 1 bold
+    for row in range(1, marks_breakdown_sheet.max_row + 1):
+        marks_breakdown_sheet.cell(row=row, column=1).font = bold_font
 
     marks = []  # {{ edit_3 }}
-    print("student number is: ", student_number)
+   # print("student number is: ", student_number)
     
     for section in processed_sections:
         marks.append({section["total"]})  
@@ -327,6 +578,73 @@ def question_mark_excel_student(workbook, processed_questions, processed_modules
 
     for row_num, item in enumerate(list_of_marks, start=2):
        marks_breakdown_sheet.cell(row=row_num, column=student_col, value=item)
+    pastel_yellow_fill = PatternFill(start_color="FFD700", end_color="FFD700", fill_type="solid")  # Pastel yellow color
+    pastel_green_fill = PatternFill(start_color="66CC66", end_color="66CC66", fill_type="solid")  # Pastel green color
+    light_blue_fill = PatternFill(start_color="ADD8E6", end_color="ADD8E6", fill_type="solid")  # Light Blue
+    light_grey_fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")  # Light Grey
 
+
+    for row in range(1, marks_breakdown_sheet.max_row + 1):
+        cell_value = marks_breakdown_sheet.cell(row=row, column=1).value
+        if cell_value and "part" in str(cell_value).lower():  # Case-insensitive check for "part"
+            # Fill the entire row with pastel yellow color
+            for col in range(1, marks_breakdown_sheet.max_column + 1):  # Loop through all columns in the row
+                marks_breakdown_sheet.cell(row=row, column=col).fill = pastel_yellow_fill
+
+        elif "topic" in str(cell_value).lower():
+                print(f"Found 'topic' in row {row}, column A: {cell_value}")  # Print the row and value
+                # Fill the entire row with pastel green color
+                for col in range(1, marks_breakdown_sheet.max_column + 1):
+                    marks_breakdown_sheet.cell(row=row, column=col).fill = pastel_green_fill
+
+    color_toggle = True  # This will toggle between True (Light Blue) and False (Light Grey)
+    for row in range(1, marks_breakdown_sheet.max_row + 1):
+        cell_value = marks_breakdown_sheet.cell(row=row, column=1).value
+        if cell_value and "question" in str(cell_value).lower():
+            #rint(f"Found 'question' in row {row}, column 1: {cell_value}")
+
+            # Decide which fill color to use (Light Blue or Light Grey)
+            if color_toggle:
+                fill_color = light_blue_fill
+                color_toggle = False  # Toggle to next color (Light Grey)
+            else:
+                fill_color = light_grey_fill
+                color_toggle = True  # Toggle to next color (Light Blue)
+
+            # Apply the chosen fill color and border to the cell
+            for col in range(1, marks_breakdown_sheet.max_column + 1):
+                cell = marks_breakdown_sheet.cell(row=row, column=col)
+                cell.fill = fill_color
+
+    student_col = None
+    for idx, col in enumerate(marks_breakdown_sheet[1], start=1):  # Start at column index 1
+        if col.value == str(student_number):
+            student_col = idx
+            break
+
+    total_row = None
+    for row in range(1, marks_breakdown_sheet.max_row + 1):
+        if marks_breakdown_sheet.cell(row=row, column=1).value == "Total":
+            total_row = row
+            break
+
+    marks_breakdown_sheet.cell(row=total_row, column=student_col, value=str(total_marks))
+    
+    
+
+    thin_border = Border(
+        top=Side(style='thin'),
+        bottom=Side(style='thin'),
+        left=Side(style='thin'),
+        right=Side(style='thin')
+    )
+    
+    for row in range(1, marks_breakdown_sheet.max_row + 1):
+        for col in range(1, marks_breakdown_sheet.max_column + 1):
+            cell = marks_breakdown_sheet.cell(row=row, column=col)
+            if cell.value is not None:  # Only apply borders to cells with data
+                cell.border = thin_border
+                
+    total_marks = 0
          
        

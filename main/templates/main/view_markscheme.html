@@ -216,18 +216,21 @@
       </div>
 
       <div class="right-panel">
-        <h1>Markscheme for {{ assignment.project_name }}</h1>
-
-        <div class="header-actions">
-          <button
-            id="finishButton"
-            class="finish-button"
-            onclick="checkAndFinish()"
-          >
-            Finish
-          </button>
+        <h1 style="text-align: center;">Markscheme for {{ assignment.project_name }}</h1>
+    
+    
+        <div class="header-actions" style="display: flex; gap: 10px; align-items: center;">
+            <button id="backButton" class="finish-button" onclick="window.location.href='/dashboard'">
+                Back to Dashboard
+            </button>
+            <button id="finishButton" class="finish-button" onclick="checkAndFinish()">
+              Finish
+            </button>
+            <button id="fullscreenButton" class="finish-button" onclick="toggleFullScreen()">
+              Full Screen
+            </button>
         </div>
-
+          
         {% if error %}
         <div class="alert alert-error"><strong>Error:</strong> {{ error }}</div>
         {% else %} {% for section in sections %}
@@ -469,6 +472,25 @@
             messageDiv.remove();
           }
         }, 3000);
+      }
+      function toggleFullScreen() {
+        let pdfViewer = document.getElementById("pdfViewer");
+      
+        if (!document.fullscreenElement) {
+          if (pdfViewer.requestFullscreen) {
+            pdfViewer.requestFullscreen();
+          } else if (pdfViewer.mozRequestFullScreen) { // Firefox
+            pdfViewer.mozRequestFullScreen();
+          } else if (pdfViewer.webkitRequestFullscreen) { // Chrome, Safari, Opera
+            pdfViewer.webkitRequestFullscreen();
+          } else if (pdfViewer.msRequestFullscreen) { // IE/Edge
+            pdfViewer.msRequestFullscreen();
+          }
+        } else {
+          if (document.exitFullscreen) {
+            document.exitFullscreen();
+          }
+        }
       }
     </script>
   </body>
