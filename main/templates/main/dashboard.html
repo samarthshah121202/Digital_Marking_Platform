@@ -1,67 +1,141 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+  <head>
     <meta charset="UTF-8" />
     <title>Dashboard</title>
-    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet"/>
+    <!-- Bootstrap CSS -->
+    <link
+      href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <!-- Font Awesome Icons -->
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
+      rel="stylesheet"
+    />
     <style>
-        /* Custom style for the Delete button only */
-        .delete-btn {
-            color: red;  /* Set the text color to red */
-            border: 1px solid red; /* Set the border color to red */
-        }
+      /* Custom Font */
+      @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap");
+      body {
+        font-family: "Poppins", sans-serif;
+      }
 
-        .delete-btn:hover {
-            background-color: red;  /* Optional: background color on hover */
-            color: white;  /* Optional: text color on hover */
-            border-color: red;  /* Optional: border color on hover */
-        }
+      /* Navbar Styling */
+      .navbar-brand {
+        font-weight: 600;
+        font-size: 1.2rem;
+      }
+
+      /* Card Styling */
+      .card {
+        transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+      .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
+      }
+
+      /* Button Styling */
+      .btn-primary {
+        background-color: #4caf50;
+        border: none;
+        transition: background-color 0.3s ease-in-out;
+      }
+      .btn-primary:hover {
+        background-color: #45a049;
+      }
+
+      .btn-danger {
+        background-color: #f44336;
+        border: none;
+        transition: background-color 0.3s ease-in-out;
+      }
+      .btn-danger:hover {
+        background-color: #da190b;
+      }
+
+      /* Empty State Styling */
+      .empty-state {
+        text-align: center;
+        font-size: 1.2rem;
+        color: #6c757d;
+      }
+      .empty-state i {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        color: #adb5bd;
+      }
     </style>
-</head>
-<body>
-    <!-- Navigation bar with logout option -->
+  </head>
+  <body>
+    <!-- Navigation Bar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <a class="navbar-brand" href="#">Marking Tool</a>
-        <div class="ml-auto">
-            <a href="{% url 'logout' %}" class="btn btn-outline-light">Logout</a>
-        </div>
+      <a class="navbar-brand" href="#">Marking Tool</a>
+      <div class="ml-auto">
+        <a href="{% url 'logout' %}" class="btn btn-outline-light">Logout</a>
+      </div>
     </nav>
 
+    <!-- Dashboard Content -->
     <div class="container mt-5">
-        <h2 class="text-center mb-4">Your Dashboard</h2>
-        <div class="text-center mb-3">
-            <a href="{% url 'create_assignment' %}" class="btn btn-primary">Start a New Assignment</a>
-        </div>
+      <h2 class="text-center mb-4">Your Dashboard</h2>
+      <div class="text-center mb-4">
+        <a href="{% url 'create_assignment' %}" class="btn btn-primary">
+          <i class="fas fa-plus mr-2"></i> Start a New Assignment
+        </a>
+      </div>
 
-        <div class="row">
-            {% for assignment in assignments %}
-            <div class="col-md-4 mb-4">
-                <div class="card">
-                    <div class="card-body">
-                        <!-- Display the project name for each assignment -->
-                        <h5 class="card-title">{{ assignment.project_name }}</h5>
-                        <!-- Add description if it exists -->
-                        {% if assignment.description %}
-                        <p class="card-text">{{ assignment.description }}</p>
-                        {% endif %}
-                        <!-- Show assignment status -->
-                        <p><strong>Status:</strong> {{ assignment.status }}</p>
-                        <!-- Link to continue working on this assignment -->
-                        <a href="{% url 'assignment_detail' assignment.id %}" class="btn btn-outline-primary">Continue</a>
-                        
-                        <!-- Form for Delete button with URL dynamically generated -->
-                        <a href="{% url 'delete_assignment' assignment.id %}" 
-                           class="btn btn-danger"
-                           onclick="return confirm('Are you sure you want to delete this assignment? This action cannot be undone.');">
-                           Delete
-                        </a>
-                    </div>
-                </div>
+      <!-- Assignment Cards -->
+      <div class="row">
+        {% for assignment in assignments %}
+        <div class="col-md-4 mb-4">
+          <div class="card h-100">
+            <div class="card-body d-flex flex-column justify-content-between">
+              <!-- Project Name -->
+              <h5 class="card-title">{{ assignment.project_name }}</h5>
+
+              <!-- Description -->
+              {% if assignment.description %}
+              <p class="card-text">{{ assignment.description }}</p>
+              {% endif %}
+
+              <!-- Status -->
+              <p><strong>Status:</strong> {{ assignment.status }}</p>
+
+              <!-- Actions -->
+              <div
+                class="d-flex justify-content-between align-items-center mt-3"
+              >
+                <a
+                  href="{% url 'assignment_detail' assignment.id %}"
+                  class="btn btn-outline-primary"
+                >
+                  <i class="fas fa-arrow-right mr-2"></i> Continue
+                </a>
+                <a
+                  href="{% url 'delete_assignment' assignment.id %}"
+                  class="btn btn-danger"
+                  onclick="return confirm('Are you sure you want to delete this assignment? This action cannot be undone.');"
+                >
+                  <i class="fas fa-trash-alt"></i>
+                </a>
+              </div>
             </div>
-            {% empty %}
-            <p class="text-center col-12">You have no assignments.</p>
-            {% endfor %}
+          </div>
         </div>
+        {% empty %}
+        <!-- Empty State -->
+        <div class="col-12">
+          <div class="empty-state">
+            <i class="fas fa-folder-open"></i>
+            <p>You have no assignments yet. Start by creating a new one!</p>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
     </div>
-</body>
+  </body>
 </html>
