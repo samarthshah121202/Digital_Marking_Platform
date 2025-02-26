@@ -455,10 +455,10 @@ def question_mark_excel(workbook, processed_questions, processed_modules, proces
     for row_num, item in enumerate(list_of_marks, start=2):
        marks_breakdown_sheet.cell(row=row_num, column=group_col, value=item)
 
-    pastel_yellow_fill = PatternFill(start_color="FFCC00", end_color="FFCC00", fill_type="solid")  # Pastel yellow color
-    pastel_green_fill = PatternFill(start_color="66CC66", end_color="66CC66", fill_type="solid")  # Pastel green color
-    light_blue_fill = PatternFill(start_color="ADD8E6", end_color="ADD8E6", fill_type="solid")  # Light Blue
-    light_grey_fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")  # Light Grey
+    pastel_yellow_fill = PatternFill(start_color="FFFFE0", end_color="FFFFE0", fill_type="solid")  # Pastel yellow color
+    pastel_green_fill = PatternFill(start_color="ACE1AF", end_color="ACE1AF", fill_type="solid")  # Pastel green color
+    light_blue_fill = PatternFill(start_color="F0F8FF", end_color="F0F8FF", fill_type="solid")  # Light Blue
+    light_grey_fill = PatternFill(start_color="F5F5F5", end_color="F5F5F5", fill_type="solid")  # Light Grey
 
 
     for row in range(1, marks_breakdown_sheet.max_row + 1):

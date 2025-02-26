@@ -138,6 +138,7 @@ STATIC_URL = '/static/'  # URL to use when referring to static files
 STATICFILES_DIRS = [
     # BASE_DIR / "student_works",  # Ensure this path is correct  
     BASE_DIR / "assignments",  # Ensure this path is correct  
+    BASE_DIR / "static"
 ]
 
 # Path to collect static files for deployment (usually ignored during local development)
