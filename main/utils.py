@@ -295,12 +295,17 @@ def create_feedback_doc(student_infos, sections, assignment_title, student_feedb
         # Process each question in the module
             for question in module["questions"]:
                 feedback_text = question["feedback_text"]
+                custom_feedback = question["custom_feedback"] or ""
 
-            # Categorize feedback
+
+
+                full_feedback = f"{feedback_text} {custom_feedback}".strip()
+
+                # Categorize feedback
                 if feedback_text in feedback_above_50:
-                    feedback_above_list.append(feedback_text)
+                    feedback_above_list.append(full_feedback)
                 elif feedback_text in feedback_below_50:
-                    feedback_below_list.append(feedback_text)
+                    feedback_below_list.append(full_feedback)
 
         # Append feedback rows for the module
             if feedback_above_list:

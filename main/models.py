@@ -104,6 +104,7 @@ class StudentMark(models.Model):
     question = models.ForeignKey(Question, on_delete=models.CASCADE)
     feedback = models.ForeignKey(Feedback, on_delete=models.CASCADE)
     marked_at = models.DateTimeField(auto_now_add=True)
+    custom_feedback = models.TextField(blank=True, null=True)
     
     class Meta:
         unique_together = ['student', 'question', 'feedback']

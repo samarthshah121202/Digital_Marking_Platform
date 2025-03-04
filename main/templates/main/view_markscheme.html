@@ -216,21 +216,37 @@
       </div>
 
       <div class="right-panel">
-        <h1 style="text-align: center;">Markscheme for {{ assignment.project_name }}</h1>
-    
-    
-        <div class="header-actions" style="display: flex; gap: 10px; align-items: center;">
-            <button id="backButton" class="finish-button" onclick="window.location.href='/dashboard'">
-                Back to Dashboard
-            </button>
-            <button id="finishButton" class="finish-button" onclick="checkAndFinish()">
-              Finish
-            </button>
-            <button id="fullscreenButton" class="finish-button" onclick="toggleFullScreen()">
-              Full Screen
-            </button>
+        <h1 style="text-align: center">
+          Markscheme for {{ assignment.project_name }}
+        </h1>
+
+        <div
+          class="header-actions"
+          style="display: flex; gap: 10px; align-items: center"
+        >
+          <button
+            id="backButton"
+            class="finish-button"
+            onclick="window.location.href='/dashboard'"
+          >
+            Back to Dashboard
+          </button>
+          <button
+            id="finishButton"
+            class="finish-button"
+            onclick="checkAndFinish()"
+          >
+            Finish
+          </button>
+          <button
+            id="fullscreenButton"
+            class="finish-button"
+            onclick="toggleFullScreen()"
+          >
+            Full Screen
+          </button>
         </div>
-          
+
         {% if error %}
         <div class="alert alert-error"><strong>Error:</strong> {{ error }}</div>
         {% else %} {% for section in sections %}
@@ -276,6 +292,18 @@
                 </tbody>
               </table>
 
+              <textarea
+                name="customFeedback-{{ question.id }}"
+                placeholder="Enter custom feedback here..."
+                id="customFeedback-question-{{ question.id }}"
+              ></textarea>
+              <button
+                class="confirm-feedback-button"
+                onclick="confirmCustomFeedback('question-{{ question.id }}')"
+              >
+                Confirm Feedback
+              </button>
+
               <div class="total-marks-display">
                 Total marks: <span class="total-marks">0</span>
               </div>
@@ -293,7 +321,10 @@
         {% endfor %} {% endif %}
 
         <!-- Add the Finish button at the bottom -->
-        <div class="footer-actions" style="margin-top: 20px; text-align: center;">
+        <div
+          class="footer-actions"
+          style="margin-top: 20px; text-align: center"
+        >
           <button
             id="finishButtonBottom"
             class="finish-button"
@@ -357,6 +388,17 @@
         }
 
         updateTotalMarks(questionId);
+      }
+
+      function confirmCustomFeedback(questionId) {
+        const customFeedback = document.getElementById(
+          `customFeedback-${questionId}`
+        ).value;
+        if (!marksData[questionId]) {
+          marksData[questionId] = {};
+        }
+        marksData[questionId].customFeedback = customFeedback;
+        console.log(`Custom feedback for ${questionId}:`, customFeedback);
       }
 
       const is_group_assignment =
@@ -475,15 +517,18 @@
       }
       function toggleFullScreen() {
         let pdfViewer = document.getElementById("pdfViewer");
-      
+
         if (!document.fullscreenElement) {
           if (pdfViewer.requestFullscreen) {
             pdfViewer.requestFullscreen();
-          } else if (pdfViewer.mozRequestFullScreen) { // Firefox
+          } else if (pdfViewer.mozRequestFullScreen) {
+            // Firefox
             pdfViewer.mozRequestFullScreen();
-          } else if (pdfViewer.webkitRequestFullscreen) { // Chrome, Safari, Opera
+          } else if (pdfViewer.webkitRequestFullscreen) {
+            // Chrome, Safari, Opera
             pdfViewer.webkitRequestFullscreen();
-          } else if (pdfViewer.msRequestFullscreen) { // IE/Edge
+          } else if (pdfViewer.msRequestFullscreen) {
+            // IE/Edge
             pdfViewer.msRequestFullscreen();
           }
         } else {
