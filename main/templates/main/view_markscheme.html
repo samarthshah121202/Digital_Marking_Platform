@@ -201,6 +201,70 @@
         margin: 0;
         padding: 0;
       }
+
+      /* Custom Feedback and Mark Styles */
+      .custom-feedback-container {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        margin-top: 1rem;
+        padding: 1rem;
+        background: #f8fafc;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+      }
+
+      .custom-feedback-container label {
+        font-weight: bold;
+        color: #2b6cb0;
+      }
+
+      .custom-feedback-container textarea {
+        width: 100%;
+        min-height: 80px;
+        padding: 0.75rem;
+        border: 1px solid #cbd5e0;
+        border-radius: 6px;
+        font-size: 1rem;
+        resize: vertical;
+        background: white;
+        transition: border-color 0.3s ease;
+      }
+
+      .custom-feedback-container textarea:focus {
+        border-color: #4299e1;
+        outline: none;
+      }
+
+      .custom-feedback-container input[type="number"] {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid #cbd5e0;
+        border-radius: 6px;
+        font-size: 1rem;
+        background: white;
+        transition: border-color 0.3s ease;
+      }
+
+      .custom-feedback-container input[type="number"]:focus {
+        border-color: #4299e1;
+        outline: none;
+      }
+
+      .confirm-feedback-button {
+        background-color: #3182ce;
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        font-size: 1rem;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+      }
+
+      .confirm-feedback-button:hover {
+        background-color: #2b6cb0;
+      }
     </style>
   </head>
   <body>
@@ -292,17 +356,35 @@
                 </tbody>
               </table>
 
-              <textarea
-                name="customFeedback-{{ question.id }}"
-                placeholder="Enter custom feedback here..."
-                id="customFeedback-question-{{ question.id }}"
-              ></textarea>
-              <button
-                class="confirm-feedback-button"
-                onclick="confirmCustomFeedback('question-{{ question.id }}')"
-              >
-                Confirm Feedback
-              </button>
+              <div class="custom-feedback-container">
+                <label for="customFeedback-question-{{ question.id }}">
+                  Custom Feedback
+                </label>
+                <textarea
+                  name="customFeedback-{{ question.id }}"
+                  placeholder="Enter custom feedback here..."
+                  id="customFeedback-question-{{ question.id }}"
+                ></textarea>
+
+                <label for="customMark-question-{{ question.id }}">
+                  Custom Marks
+                </label>
+                <input
+                  type="number"
+                  name="customMark-{{ question.id }}"
+                  placeholder="Enter custom mark here..."
+                  id="customMark-question-{{ question.id }}"
+                  min="0"
+                  step="0.1"
+                />
+
+                <button
+                  class="confirm-feedback-button"
+                  onclick="confirmCustomFeedback('question-{{ question.id }}')"
+                >
+                  Confirm Feedback
+                </button>
+              </div>
 
               <div class="total-marks-display">
                 Total marks: <span class="total-marks">0</span>
@@ -342,6 +424,39 @@
       document.addEventListener("DOMContentLoaded", function () {
         const tables = document.getElementsByClassName("feedback-table");
         for (let table of tables) {
+          const questionId = table.id;
+          const firstRowMark = getFirstRowMark(questionId);
+          console.log(`First row mark for ${questionId}:`, firstRowMark);
+
+          const customMarkInput = document.getElementById(
+            `customMark-${questionId}`
+          );
+          if (customMarkInput) {
+            customMarkInput.addEventListener("input", function () {
+              validateCustomMark(customMarkInput, firstRowMark);
+            });
+          }
+        }
+      });
+
+      function getFirstRowMark(questionId) {
+        const table = document.getElementById(questionId);
+        if (table) {
+          const firstRow = table.querySelector("tbody tr");
+          if (firstRow) {
+            const markCell = firstRow.querySelector("td:last-child");
+            if (markCell) {
+              const mark = parseFloat(markCell.textContent);
+              return mark;
+            }
+          }
+        }
+        return null;
+      }
+
+      document.addEventListener("DOMContentLoaded", function () {
+        const tables = document.getElementsByClassName("feedback-table");
+        for (let table of tables) {
           updateTotalMarks(table.id);
         }
       });
@@ -362,6 +477,13 @@
           marks: parseFloat(marks),
         };
 
+        // Disable custom mark input when predefined feedback is selected
+        const customMarkInput = document.getElementById(`customMark-${questionId}`);
+        if (customMarkInput) {
+          customMarkInput.value = ""; // Clear custom mark input
+          customMarkInput.disabled = true; // Disable custom mark input
+        }
+
         updateTotalMarks(questionId);
       }
 
@@ -372,6 +494,17 @@
 
         if (selectedRow) {
           total = parseFloat(selectedRow.dataset.mark);
+        }
+
+        // Check for custom marks and add them to the total if they exist
+        const customMarkInput = document.getElementById(
+          `customMark-${questionId}`
+        );
+        const customMarkValue = customMarkInput
+          ? parseFloat(customMarkInput.value)
+          : 0;
+        if (!isNaN(customMarkValue)) {
+          total += customMarkValue;
         }
 
         const totalDisplay = table.parentElement.querySelector(".total-marks");
@@ -387,18 +520,56 @@
           delete marksData[questionId];
         }
 
+        // Enable custom mark input when question is reset
+        const customMarkInput = document.getElementById(`customMark-${questionId}`);
+        if (customMarkInput) {
+          customMarkInput.disabled = false;
+        }
+
         updateTotalMarks(questionId);
       }
 
+      function validateCustomMark(inputElement, maxMark) {
+        const customMarkValue = parseFloat(inputElement.value);
+        if (!isNaN(customMarkValue) && customMarkValue > maxMark) {
+          inputElement.style.borderColor = "red";
+          inputElement.setCustomValidity(
+            "Custom mark cannot exceed the maximum mark."
+          );
+        } else {
+          inputElement.style.borderColor = ""; // Reset to default
+          inputElement.setCustomValidity(""); // Clear any previous error
+        }
+      }
+
       function confirmCustomFeedback(questionId) {
-        const customFeedback = document.getElementById(
-          `customFeedback-${questionId}`
-        ).value;
+        const customMarkInput = document.getElementById(`customMark-${questionId}`);
+        const customMark = parseFloat(customMarkInput.value);
+        const firstRowMark = getFirstRowMark(questionId);
+
+        if (customMark > firstRowMark) {
+          alert("Custom mark cannot exceed the maximum mark.");
+          return; // Prevent confirmation
+        }
+
+        const customFeedback = document.getElementById(`customFeedback-${questionId}`).value;
         if (!marksData[questionId]) {
           marksData[questionId] = {};
         }
         marksData[questionId].customFeedback = customFeedback;
+        marksData[questionId].customMark = customMark;
+
         console.log(`Custom feedback for ${questionId}:`, customFeedback);
+        console.log(`Custom mark for ${questionId}:`, customMark);
+
+        // Deselect any predefined feedback when custom mark is confirmed
+        const table = document.getElementById(questionId);
+        const selectedRow = table.querySelector(".selected");
+        if (selectedRow) {
+          selectedRow.classList.remove("selected");
+        }
+
+        updateTotalMarks(questionId);
       }
 
       const is_group_assignment =
@@ -412,8 +583,19 @@
         let unmarkedQuestions = [];
 
         for (let table of tables) {
-          if (!table.querySelector(".selected")) {
-            const questionId = table.id;
+          const questionId = table.id;
+          const selectedRow = table.querySelector(".selected");
+          const customMarksInput = document.getElementById(
+            `customMark-${questionId}`
+          );
+          const customMarks = customMarksInput
+            ? customMarksInput.value.trim()
+            : "";
+          const isCustomMarksValid =
+            customMarks !== "" && !isNaN(parseFloat(customMarks));
+
+          // Allow finish if either predefined feedback is selected or valid custom marks are provided
+          if (!selectedRow && !isCustomMarksValid) {
             const questionText = table
               .closest(".question")
               .querySelector("h4").textContent;
@@ -427,14 +609,20 @@
           } unmarked questions. Are you sure you want to finish?\n\nUnmarked questions:\n${unmarkedQuestions.join(
             "\n"
           )}`;
+
           if (!confirm(confirmMessage)) {
             return;
           }
         }
 
-        saveAllMarks().then(() => {
-          window.location.href = `/assignments/${assignmentId}/marks/${studentWorkId}/`;
-        });
+        saveAllMarks()
+          .then(() => {
+            window.location.href = `/assignments/${assignmentId}/marks/${studentWorkId}/`;
+          })
+          .catch((error) => {
+            console.error("Error saving marks:", error);
+            alert("An error occurred while saving marks. Please try again.");
+          });
       }
 
       function saveAllMarks() {

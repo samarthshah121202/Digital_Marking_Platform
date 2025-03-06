@@ -144,7 +144,13 @@
                                         {{ question_data.custom_feedback|default_if_none:"" }}
                                     </p>
                                     <p class="question-mark">
-                                        Marks: {{ question_data.mark|floatformat:2 }} / {{ question_data.question.total_possible_marks|floatformat:2 }}
+                                        Marks: 
+                                        {% if question_data.mark %}
+                                            {{ question_data.mark|floatformat:2 }}
+                                        {% else %}
+                                            {{ question_data.custom_mark|floatformat:2 }}
+                                        {% endif %}
+                                        / {{ question_data.question.total_possible_marks|floatformat:2 }}
                                     </p>
                                 </div>
                             </div>

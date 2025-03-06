@@ -294,6 +294,9 @@ def delete_assignment(request, assignment_id):
         messages.error(request, f'Error deleting assignment: {str(e)}')
         return redirect('dashboard')
 
+def extract_marks(question_text):
+    match = re.search(r"\((\d+)\smarks?\)", question_text)
+    return int(match.group(1)) if match else None
 
 @login_required
 def view_markscheme(request, assignment_id, submission_id):
@@ -354,15 +357,17 @@ def save_marks(request):
                 question = Question.objects.get(id=clean_question_id)
                 
                 # Get the feedback and create new mark
-                feedback = Feedback.objects.get(id=mark_info['feedbackId'])
+                feedback = None
+                if 'feedbackId' in mark_info:
+                    feedback = Feedback.objects.get(id=mark_info['feedbackId'])
 
                 if is_group == 0:
                     if "customFeedback" in mark_info:
                         StudentMark.objects.create(
                             student=student,
                             question=question,
-                            feedback=feedback,
-                            custom_feedback=mark_info["customFeedback"]
+                            custom_feedback=mark_info.get("customFeedback", ""),
+                            custom_mark=mark_info.get("customMark", 0)
                         )
                     else:
                         StudentMark.objects.create(
@@ -378,8 +383,8 @@ def save_marks(request):
                             StudentMark.objects.create(
                                 student=participant,
                                 question=question,
-                                feedback=feedback,
-                                custom_feedback=mark_info["customFeedback"]
+                                custom_feedback=mark_info.get("customFeedback", ""),
+                                custom_mark=mark_info.get("customMark", 0)
                             )
                         else:
                             StudentMark.objects.create(
@@ -418,18 +423,13 @@ def view_marks(request, assignment_id, submission_id):
     try:
         assignment = Assignment.objects.get(id=assignment_id)
 
-        project_name = assignment.project_name # Get the project name from the form
-        project_folder = os.path.join(settings.MEDIA_ROOT, "assignments", request.user.username, project_name) # Create a path to the project folder
-        student_feedback_doc_path =  os.path.join(project_folder, "student_feedback")
+        project_name = assignment.project_name
+        project_folder = os.path.join(settings.MEDIA_ROOT, "assignments", request.user.username, project_name)
+        student_feedback_doc_path = os.path.join(project_folder, "student_feedback")
 
         student_work = assignment.student_works.get(id=submission_id)
 
-        if not isinstance(student_work, StudentWork):
-            logger.info(f"Invalid student_work fetched: {student_work}")
-        else:
-            #logger.info(f"Fetched StudentWork: {student_work} {student_work.first_name} {student_work.last_name}")
-
-            sections = Section.objects.prefetch_related(
+        sections = Section.objects.prefetch_related(
             'modules',
             'modules__questions',
             'modules__questions__feedbacks',
@@ -439,9 +439,6 @@ def view_marks(request, assignment_id, submission_id):
             modules__questions__studentmark__student=student_work
         ).distinct()
 
-        # Now let's print the data for each section, module, question, feedback, and student mark
-      
-        # Process the data to include marks
         processed_sections = []
         total_marks = 0
 
@@ -452,21 +449,24 @@ def view_marks(request, assignment_id, submission_id):
             for module in section.modules.all():
                 module_total = 0
                 processed_questions = []
-                
+
                 for question in module.questions.all():
-                    # Get the student's mark for this question
                     student_mark = question.studentmark_set.filter(student=student_work).first()
-                    
+
                     question_data = {
                         'question': question,
-                        'mark': student_mark.feedback.mark if student_mark else 0,
-                        'feedback_text': student_mark.feedback.feedback_text if student_mark else "No mark recorded",
-                        'custom_feedback': student_mark.custom_feedback if student_mark else "No custom feedback recorded"
+                        'mark': student_mark.feedback.mark if student_mark and student_mark.feedback else student_mark.custom_mark,
+                        'feedback_text': student_mark.feedback.feedback_text if student_mark and student_mark.feedback else "",
+                        'custom_feedback': student_mark.custom_feedback if student_mark else "No custom feedback recorded",
                     }
                     processed_questions.append(question_data)
+
                     if student_mark:
-                        module_total += student_mark.feedback.mark
-                
+                        if student_mark.feedback:
+                            module_total += student_mark.feedback.mark
+                        else:
+                            module_total += student_mark.custom_mark
+
                 module_data = {
                     'module': module,
                     'questions': processed_questions,
@@ -475,17 +475,16 @@ def view_marks(request, assignment_id, submission_id):
 
                 processed_modules.append(module_data)
                 section_total += module_total
-            
+
             section_data = {
                 'section': section,
                 'modules': processed_modules,
                 'total': section_total
             }
-            # logger.info(f"section data {section_data}")
             processed_sections.append(section_data)
-            print(processed_sections)
+            
             total_marks += section_total
-
+        print(processed_sections)
         feedback_above_50 = []
         feedback_below_50 = []
 
@@ -569,8 +568,8 @@ def view_marks(request, assignment_id, submission_id):
             'processed_sections': processed_sections,
             'total_marks': total_marks,
             'submission_id': student_work.id,
-            'feedback_doc_path':feedback_doc_path
-            })
+            'feedback_doc_path': feedback_doc_path
+        })
         
     except Assignment.DoesNotExist:
         return render(request, 'main/view_marks.html', {
