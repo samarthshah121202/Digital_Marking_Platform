@@ -478,7 +478,9 @@
         };
 
         // Disable custom mark input when predefined feedback is selected
-        const customMarkInput = document.getElementById(`customMark-${questionId}`);
+        const customMarkInput = document.getElementById(
+          `customMark-${questionId}`
+        );
         if (customMarkInput) {
           customMarkInput.value = ""; // Clear custom mark input
           customMarkInput.disabled = true; // Disable custom mark input
@@ -521,7 +523,9 @@
         }
 
         // Enable custom mark input when question is reset
-        const customMarkInput = document.getElementById(`customMark-${questionId}`);
+        const customMarkInput = document.getElementById(
+          `customMark-${questionId}`
+        );
         if (customMarkInput) {
           customMarkInput.disabled = false;
         }
@@ -543,7 +547,9 @@
       }
 
       function confirmCustomFeedback(questionId) {
-        const customMarkInput = document.getElementById(`customMark-${questionId}`);
+        const customMarkInput = document.getElementById(
+          `customMark-${questionId}`
+        );
         const customMark = parseFloat(customMarkInput.value);
         const firstRowMark = getFirstRowMark(questionId);
 
@@ -552,7 +558,9 @@
           return; // Prevent confirmation
         }
 
-        const customFeedback = document.getElementById(`customFeedback-${questionId}`).value;
+        const customFeedback = document.getElementById(
+          `customFeedback-${questionId}`
+        ).value;
         if (!marksData[questionId]) {
           marksData[questionId] = {};
         }
