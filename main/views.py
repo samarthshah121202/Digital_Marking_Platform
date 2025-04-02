@@ -27,7 +27,6 @@ from django.http import HttpResponse, FileResponse
 logger = logging.getLogger(__name__)
 
 
-markscheme_breakdown = []
 filepath_feedback = ""
 
 def get_spreadsheet_name(request, project_name):
@@ -62,7 +61,7 @@ def create_assignment(request):
                     is_group_assignment=form.cleaned_data["is_group_assignment"]  
                 )
                 
-                
+                markscheme_breakdown = []
                 for index, file in enumerate(request.FILES.getlist('student_work')): 
                     
                     student_work_path = os.path.join(student_submissions_path, f"student_work_{index}.pdf") 
@@ -121,7 +120,6 @@ def create_assignment(request):
 
                             for question in module.questions.all():
                                 markscheme_breakdown.append(question.question)
-                
                 print(markscheme_breakdown)
                 # Create and save the marks workbook
                 wb = Workbook()
@@ -162,6 +160,7 @@ def create_assignment(request):
 
                 # Save the workbook in the project folder
                 marks_file_path = os.path.join(project_folder, str(project_name) + "_student_marks.xlsx")
+                logger.info(f"path {marks_file_path}")
                 wb.save(marks_file_path)
 
                 # Save the assignment instance after creating student works and handling files

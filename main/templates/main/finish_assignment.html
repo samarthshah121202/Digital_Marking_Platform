@@ -7,53 +7,67 @@
 
     <style>
       body {
-        font-family: 'Arial', sans-serif;
-        background-color: #f8f9fa;
-        color: #333;
+        font-family: 'Inter', sans-serif;
+        background-color: #f0f4ff; /* Tailwind indigo-50 */
+        color: #1e293b; /* Tailwind slate-800 */
         display: flex;
         justify-content: center;
         align-items: center;
         height: 100vh;
         margin: 0;
       }
+    
       .container {
         text-align: center;
         padding: 2rem;
-        border-radius: 12px;
+        border-radius: 1rem;
         background-color: white;
-        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 10px 15px rgba(0, 0, 0, 0.05);
       }
+    
       a.download-btn,
       a.back-btn {
         display: inline-block;
-        background-color: #28a745;
-        color: white;
-        padding: 10px 20px;
-        border-radius: 5px;
-        text-decoration: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 0.5rem;
         font-size: 1rem;
-        font-weight: bold;
+        font-weight: 600;
+        text-decoration: none;
         transition: background-color 0.3s;
         margin-top: 1rem;
       }
+    
+      a.download-btn {
+        background-color: #10b981; /* Tailwind green-500 */
+        color: white;
+      }
+    
       a.download-btn:hover {
-        background-color: #218838;
+        background-color: #059669; /* Tailwind green-600 */
       }
+    
       a.back-btn {
-        background-color: #6c757d;
+        background-color: #6366f1; /* Tailwind indigo-600 */
+        color: white;
       }
+    
       a.back-btn:hover {
-        background-color: #5a6268;
+        background-color: #4f46e5; /* Tailwind indigo-700 */
       }
+    
       h1 {
-        font-size: 1.8rem;
+        font-size: 2rem;
+        font-weight: 700;
+        color: #1e3a8a; /* Tailwind indigo-900 */
         margin-bottom: 1rem;
       }
+    
       p {
         margin-bottom: 1.5rem;
-        color: #666;
+        color: #475569; /* Tailwind slate-600 */
       }
     </style>
+    
   </head>
   <body>
     <div class="container">
