@@ -549,10 +549,10 @@ def view_marks(request, assignment_id, submission_id):
         
         if assignment.is_group_assignment:
             add_to_feedback_sheet(wb, id_table, group_table)
-            feedback_doc_name = f"Group_{submission_id}_Feedback"
+            feedback_doc_name = f"Group_{student_work.group_number}_Feedback"
         else:
             add_to_feedback_sheet(wb, id_table)
-            feedback_doc_name = f"{submission_id}_Feedback"
+            feedback_doc_name = f"{tmp.student_number}_Feedback"
 
 
         wb.save(marks_file_path)
