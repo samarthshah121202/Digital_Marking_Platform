@@ -422,6 +422,7 @@ def view_marks(request, assignment_id, submission_id):
         student_feedback_doc_path = os.path.join(project_folder, "student_feedback")
 
         student_work = assignment.student_works.get(id=submission_id)
+        feedback_doc_name=""
 
         sections = Section.objects.prefetch_related(
             'modules',
@@ -548,8 +549,10 @@ def view_marks(request, assignment_id, submission_id):
         
         if assignment.is_group_assignment:
             add_to_feedback_sheet(wb, id_table, group_table)
+            feedback_doc_name = f"Group_{submission_id}_Feedback"
         else:
             add_to_feedback_sheet(wb, id_table)
+            feedback_doc_name = f"{submission_id}_Feedback"
 
 
         wb.save(marks_file_path)
@@ -562,7 +565,8 @@ def view_marks(request, assignment_id, submission_id):
             'processed_sections': processed_sections,
             'total_marks': total_marks,
             'submission_id': student_work.id,
-            'feedback_doc_path': feedback_doc_path
+            'feedback_doc_path': feedback_doc_path,
+            'feedback_doc_name': feedback_doc_name
         })
         
     except Assignment.DoesNotExist:
