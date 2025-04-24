@@ -200,11 +200,9 @@
           button.addEventListener("click", () => {
             const step = button.getAttribute("data-step");
 
-            // Remove active class from all buttons and contents
             buttons.forEach((b) => b.classList.remove("active"));
             contents.forEach((c) => c.classList.remove("active"));
 
-            // Add active class to clicked button and corresponding content
             button.classList.add("active");
             document
               .querySelector(`.step-content[data-step="${step}"]`)

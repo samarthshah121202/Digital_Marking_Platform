@@ -68,14 +68,9 @@ def create_assignment(request):
                     handle_uploaded_file(file, student_work_path)
 
                     
-                    #g_num = read_group_number(student_work_path)  # Extract student information from the uploaded PDF
-                    # Extract student information from the uploaded PDF using Tabula
+                    
                     student_info = extract_student_info_from_pdf(student_work_path, is_group=form.cleaned_data["is_group_assignment"])
-                    #]print("Is it group?:  ", form.cleaned_data["is_group_assignment"])
-                    
-                    #logger.info(f"file: {file}") # Log the file
-                    
-                    # Iterate over each student dictionary in the list
+                   
                     for student in student_info:
                         if form.cleaned_data["is_group_assignment"]:
                             if student['group_number'] not in group_num:
