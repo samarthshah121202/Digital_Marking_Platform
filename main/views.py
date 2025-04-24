@@ -585,7 +585,7 @@ def finish_assignment(request, assignment_id):
         spreadsheet_path = spreadsheet_path.removeprefix("assignments")
 
     static_spreadsheet_path = static(spreadsheet_path)
-    excel_name = f"{assignment.project_name}_student_marks.xslx"
+    excel_name = f"{assignment.project_name}_student_marks"
     print(static_spreadsheet_path)
 
 
