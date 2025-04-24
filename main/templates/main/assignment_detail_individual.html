@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Assignment Detail</title>
     <link
       href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
@@ -95,9 +95,7 @@
                 </table>
               </div>
               {% else %}
-              <div class="alert alert-info">
-                No student submissions found.
-              </div>
+              <div class="alert alert-info">No student submissions found.</div>
               {% endif %}
 
               <div class="mt-4 d-flex justify-content-between">
@@ -105,5 +103,16 @@
                   Back to Dashboard
                 </a>
                 {% if all_marked %}
-                <a href="{% url 'finish_assignment' assignment.id %}" class="btn btn-success">
+                <a href="{% url 'finish_assignment' assignment.id %}" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center">
+                  <i class="fas fa-check-circle mr-2"></i> Finish Assignment
+                </a>
+
                 {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
