@@ -172,3 +172,11 @@ config = {
 
 # Configure the logger
 LogInsightsLogger.configure(config)
+
+def create_assignments_folder_once():
+    from django.conf import settings
+    assignments_path = os.path.join(settings.BASE_DIR, 'assignments')
+    if not os.path.exists(assignments_path):
+        os.makedirs(assignments_path)
+
+create_assignments_folder_once()
