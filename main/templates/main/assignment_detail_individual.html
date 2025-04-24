@@ -8,6 +8,10 @@
       href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
       rel="stylesheet"
     />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+      rel="stylesheet"
+    />
     <style>
       body {
         background: linear-gradient(to bottom right, #eef2ff, #ffffff, #eef2ff);
@@ -31,14 +35,6 @@
         transition: all 0.2s ease-in-out;
       }
       .btn-indigo:hover {
-        background-color: #4f46e5;
-        color: #fff;
-      }
-      .btn-outline-indigo {
-        color: #4f46e5;
-        border: 1px solid #4f46e5;
-      }
-      .btn-outline-indigo:hover {
         background-color: #4f46e5;
         color: #fff;
       }
@@ -98,15 +94,18 @@
               <div class="alert alert-info">No student submissions found.</div>
               {% endif %}
 
-              <div class="mt-4 d-flex justify-content-between">
+              <div class="mt-4 d-flex justify-content-between align-items-center">
                 <a href="{% url 'dashboard' %}" class="btn btn-indigo">
-                  Back to Dashboard
-                </a>
-                {% if all_marked %}
-                <a href="{% url 'finish_assignment' assignment.id %}" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center">
-                  <i class="fas fa-check-circle mr-2"></i> Finish Assignment
+                  <i class="fas fa-arrow-left mr-1"></i> Back to Dashboard
                 </a>
 
+                {% if all_marked %}
+                <a
+                  href="{% url 'finish_assignment' assignment.id %}"
+                  class="btn btn-success"
+                >
+                  <i class="fas fa-check-circle mr-1"></i> Finish Assignment
+                </a>
                 {% endif %}
               </div>
             </div>
