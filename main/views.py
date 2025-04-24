@@ -579,16 +579,18 @@ def finish_assignment(request, assignment_id):
     logger.info(f"User {request.user.username} is finishing assignment ID: {assignment_id}")  # Log for username
     # Logic for finishing the assignment (e.g., marking it as complete)
     assignment = get_object_or_404(Assignment, id=assignment_id, user=request.user)
-    
+    excel_name = ""
     spreadsheet_path = get_spreadsheet_name(request=request, project_name=assignment.project_name)
     if spreadsheet_path and spreadsheet_path.startswith("assignments"):
         spreadsheet_path = spreadsheet_path.removeprefix("assignments")
 
     static_spreadsheet_path = static(spreadsheet_path)
+    excel_name = "{assignment.project_name}__student_marks"
     print(static_spreadsheet_path)
 
 
     return render(request, 'main/finish_assignment.html', {
         'assignment': assignment,
-        'static_spreadsheet_path': static_spreadsheet_path
+        'static_spreadsheet_path': static_spreadsheet_path,
+        'excel_name': excel_name
     })
