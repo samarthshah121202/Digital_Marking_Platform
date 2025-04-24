@@ -14,11 +14,18 @@ from pathlib import Path
 from finalyearproject.logging import LOGGING
 import os
 
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 LOGGING_CONFIG = None
+def create_assignments_folder_once():
+    from django.conf import settings
+    assignments_path = os.path.join(settings.BASE_DIR, 'assignments')
+    if not os.path.exists(assignments_path):
+        os.makedirs(assignments_path)
 
+create_assignments_folder_once()
 import logging.config
 logging.config.dictConfig(LOGGING)
 
@@ -31,7 +38,7 @@ SECRET_KEY = 'django-insecure-x6f9=20c^+6_&7k*u(ohfrkj@u2#z495+g53&^94$s+g1gj$2w
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["digital-marking-platform-ss-f11878c25b08.herokuapp.com"]
+ALLOWED_HOSTS = ["digital-marking-platform-ss-f11878c25b08.herokuapp.com", '127.0.0.1']
 
 
 # Application definition
@@ -54,7 +61,9 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
 ]
+
 
 ROOT_URLCONF = 'finalyearproject.urls'
 
@@ -153,6 +162,8 @@ STATICFILES_DIRS = [
 # Path to collect static files for deployment (usually ignored during local development)
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
 LOGIN_REDIRECT_URL = 'dashboard'
 LOGOUT_REDIRECT_URL = '/'
 
@@ -173,10 +184,3 @@ config = {
 # Configure the logger
 LogInsightsLogger.configure(config)
 
-def create_assignments_folder_once():
-    from django.conf import settings
-    assignments_path = os.path.join(settings.BASE_DIR, 'assignments')
-    if not os.path.exists(assignments_path):
-        os.makedirs(assignments_path)
-
-create_assignments_folder_once()
