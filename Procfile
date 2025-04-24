@@ -1,1 +1,1 @@
-web: gunicorn --config gunicorn.conf.py FyP.wsgi
+web: gunicorn --config gunicorn.conf.py finalyearproject.wsgi
